@@ -1,203 +1,471 @@
-#!/usr/bin/env -S deno run --allow-net --allow-env --allow-run
+#!/usr/bin/env -S deno run --allow-net --allow-env
+// fetch_quote.ts
 
-/**
- * Enhanced Stock Analysis Script (Deno)
- * @description A CLI tool to fetch stock quotes, historical data, CANSLIM zones, volume analysis, and news using Alpha Vantage API.
- * Features: Current price, change, volume with % color-coded, buy/sell zones, ASCII chart (not implemented), ticker & general news.
- * Usage: ./fetch_quote.ts [options] [TICKERS...]
- * Dependencies: Deno standard library (flags, io, colors).
- * API: Requires ALPHA_VANTAGE_API_KEY environment variable.
- * Limitations: Free API has rate limits (5/min, 500/day); news may not always return results.
+// std deps
+import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
+import * as colors from "https://deno.land/std@0.224.0/fmt/colors.ts";
+import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { join as pathJoin } from "https://deno.land/std@0.224.0/path/mod.ts";
 
- * ### Code Assessment (as of July 15, 2025)
- * This assessment evaluates the script's functionality, strengths, weaknesses, and improvement suggestions for use with other LLMs or development.
-
- * #### Strengths
- * - **Functionality**: Core features work well: fetches quotes/historical data, calculates zones/volume with color output, handles multiple tickers, supports --news/--top-news flags, retry logic for rate limits.
- * - **Error Handling**: Try-catch blocks handle API errors, continuing with other tickers.
- * - **User Experience**: Interactive prompt, help message, ticker validation.
- * - **Dependencies**: Lightweight, uses Deno std lib only.
- * - **Performance**: Sequential calls suitable for small inputs; retry prevents failures.
-
- * #### Weaknesses and Issues
- * - **News Retrieval**: For some tickers (e.g., CRM, GOOGL), no news returned due to API limitations (sentiment-based, may lack recent data). --top-news often empty; topics too specific.
- * - **API Limitations**: Free tier rate limits can cause delays; no handling for key invalidity or API notes.
- * - **Data Accuracy**: 52-week high assumes full data; volume avg over 30 days but could exclude holidays more precisely.
- * - **Unimplemented Features**: --chart, --chart-ascii, --ai-analysis, --pager parsed but unused (noted in help).
- * - **Code Structure**: Main logic in IIFE; could be modularized. No unit tests.
- * - **Edge Cases**: Handled well (invalid tickers filtered, non-trading days use latest), but news empty for some.
- * - **Security/Practices**: Good (env var for key, input validation), but no sanitization beyond tickers.
-
- * #### Recommendations
- * - Extend news time_from to 30-90 days or remove for --top-news.
- * - Add parallel fetches with throttling for multiple tickers.
- * - Implement tests with Deno.test for functions like pct, validateTicker.
- * - Remove/stub unused flags if not planning implementation.
- * - Overall Score: 8/10 - Solid CLI tool, but API-dependent news is main issue.
-
- */
-
-import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { readLines } from "https://deno.land/std@0.181.0/io/read_lines.ts";
-import { bold, green, red, yellow } from "https://deno.land/std@0.181.0/fmt/colors.ts";
-
-async function ask(q: string): Promise<string> {
-  await Deno.stdout.write(new TextEncoder().encode(q));
-  for await (const l of readLines(Deno.stdin)) return l.trim();
-  return "";
-}
-
-function pct(x: number): string { return `${(x*100).toFixed(2)}%`; }
-function validateTicker(t: string): boolean { return /^[A-Z.]+$/i.test(t); }
-
-async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
-  for (let i = 0; i < retries; i++) {
-    const resp = await fetch(url);
-    if (resp.ok) return resp;
-    if (resp.status === 429) {
-      console.warn(yellow(`Rate limit; retrying in ${delay/1000}s...`));
-      await new Promise(r=>setTimeout(r, delay)); delay*=2;
-    } else throw new Error(`HTTP ${resp.status}`);
-  }
-  throw new Error("Max retries exceeded");
-}
-
-function formatDateForApi(d: Date): string {
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-  return `${y}${m}${dd}T0000`;
-}
-
-const openCmd = Deno.build.os==='windows' ? ['cmd.exe','/c','start'] : ['open'];
-const pagerCmd = Deno.build.os==='windows' ? ['more'] : ['less','-R'];
-
-const {
-  ticker,
-  'top-news': showTopNews,
-  news: showAllTickerNews,
-  pager: usePager,
-  chart: openChart,
-  'chart-ascii': showAscii,
-  'ai-analysis': aiAnalysis,
-  'buy-pct': buyPct = 0.07,
-  'sell-pct': sellPct = 0.08,
-  help,
-  _: positional,
-} = parse(Deno.args, {
-  alias:{t:'ticker',tn:'top-news',n:'news',h:'help'},
-  boolean:['top-news','news','pager','chart','chart-ascii','ai-analysis','help'],
-  default:{'buy-pct':0.07,'sell-pct':0.08,'top-news':false,news:false,pager:false,chart:false,'chart-ascii':false,'ai-analysis':false,help:false}
+// ----------------------------- CLI parsing -----------------------------
+const args = parse(Deno.args, {
+  alias: { t: "ticker", h: "help", c: "concurrency" },
+  boolean: ["news", "top-news", "help"],
+  string: ["ticker", "cache-dir"],
+  default: { concurrency: 2 },
 });
 
-if(help){
-  console.log(`Usage: fetch_quote.ts [options] [TICKERS...]
-Options:
-  -t, --ticker       Comma-separated symbols
-      --buy-pct      Buy zone % (default 7)
-      --sell-pct     Sell thresh % (default 8)
-  -tn, --top-news    Show all relevant general market headlines
-  -n, --news         Show all recent news for the ticker (instead of top 3)
-      --chart        Open chart in browser (not implemented)
-      --chart-ascii  ASCII chart (not implemented)
-      --ai-analysis  AI analysis (not implemented)
-      --pager        Page output (not implemented)
-  -h, --help         Help message
-`);
+const buyPct = Number(args["buy-pct"] ?? args.buyPct ?? 7);
+const sellPct = Number(args["sell-pct"] ?? args.sellPct ?? 8);
+const concurrency = Math.max(1, Number(args.concurrency ?? 2));
+const cacheDir = typeof args["cache-dir"] === "string" ? args["cache-dir"] : undefined;
+
+let tickers: string[] = [];
+if (args.ticker) tickers = String(args.ticker).split(",").map((s) => s.trim());
+tickers = tickers.concat(args._.map(String));
+tickers = tickers.map((s) => s.toUpperCase()).filter(Boolean).filter(validateTicker);
+
+const showNews = !!args.news;
+const showTopNews = !!args["top-news"];
+const showHelp = !!args.help;
+
+if (showHelp || (!showTopNews && tickers.length === 0)) {
+  printHelp();
   Deno.exit(0);
 }
 
-const API_KEY = Deno.env.get('ALPHA_VANTAGE_API_KEY');
-if(!API_KEY){ console.error(red('Set ALPHA_VANTAGE_API_KEY')); Deno.exit(1); }
-
-// Ticker-specific news
-async function fetchNews(sym:string){
-  const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${sym}&time_from=${formatDateForApi(new Date(Date.now()-30*86400000))}&limit=50&sort=LATEST&apikey=${API_KEY}`;
-  const data = await fetchWithRetry(url).then(r=>r.json());
-  return data.feed as any[]||[];
-}
-// General market headlines
-async function fetchTopNews(){
-  const topics='financial_markets,economy_fiscal,economy_monetary,economy_macro,finance';
-  const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=${topics}&time_from=${formatDateForApi(new Date(Date.now()-30*86400000))}&limit=50&sort=LATEST&apikey=${API_KEY}`;
-  const data = await fetchWithRetry(url).then(r=>r.json());
-  const feed = (data.feed as any[]||[]);
-  const seen=new Set<string>();
-  return feed.filter(i=> seen.has(i.title)?false:seen.add(i.title));
+const API_KEY = Deno.env.get("ALPHA_VANTAGE_API_KEY") || "";
+if (!API_KEY) {
+  console.error(colors.red("Missing ALPHA_VANTAGE_API_KEY env var."));
+  console.error("Get a key at https://www.alphavantage.co and set it, e.g.:");
+  console.error(colors.gray("  export ALPHA_VANTAGE_API_KEY=YOUR_KEY"));
+  Deno.exit(1);
 }
 
-function printTopNews(items:any[]){
-  console.log(bold(`\nTop Market Headlines:`));
-  items.forEach(i=>console.log(` - ${i.title}`));
+// --------------------------- Backoff & cache ---------------------------
+type BackoffOpts = {
+  maxRetries?: number;
+  baseDelayMs?: number;
+  factor?: number;
+  maxDelayMs?: number;
+  jitterMs?: number;
+};
+const DEFAULT_BACKOFF: Required<BackoffOpts> = {
+  maxRetries: 6,
+  baseDelayMs: 800,
+  factor: 2,
+  maxDelayMs: 30_000,
+  jitterMs: 400,
+};
+
+function sleep(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+function computeDelay(attempt: number, o: Required<BackoffOpts>) {
+  const base = Math.min(o.maxDelayMs, o.baseDelayMs * Math.pow(o.factor, attempt));
+  const jitter = Math.floor(Math.random() * (o.jitterMs + 1));
+  return base + jitter;
+}
+function isAVSoftLimit(obj: unknown): boolean {
+  if (!obj || typeof obj !== "object") return false;
+  const note = (obj as any).Note ?? (obj as any).Information;
+  if (typeof note !== "string") return false;
+  const s = note.toLowerCase();
+  return s.includes("frequency") || s.includes("limit") || s.includes("please consider");
 }
 
-(async()=>{
-  let symbols:string[] = [];
-  if(ticker) symbols = String(ticker).split(',').map(s=>s.trim().toUpperCase());
-  else if(positional.length) symbols = positional.map(s=>String(s).toUpperCase());
-  else {
-    if (!showTopNews) {
-      const inpt = await ask('Enter ticker(s), comma-separated: ');
-      symbols = inpt.split(',').map(s=>s.trim().toUpperCase());
+async function fetchJsonWithBackoff(
+  url: string,
+  backoff: BackoffOpts = {},
+  onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
+): Promise<any> {
+  const o = { ...DEFAULT_BACKOFF, ...backoff };
+  let lastErr: unknown = undefined;
+
+  for (let attempt = 0; attempt <= o.maxRetries; attempt++) {
+    try {
+      const res = await fetch(url);
+
+      if (res.status === 429 || (res.status >= 500 && res.status <= 599)) {
+        const d = computeDelay(attempt, o);
+        onRetry?.({ attempt, delayMs: d, reason: `HTTP ${res.status}` });
+        await sleep(d);
+        continue;
+      }
+
+      const text = await res.text();
+      let data: any;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+        return text;
+      }
+
+      if (isAVSoftLimit(data)) {
+        const d = Math.max(10_000, computeDelay(attempt, o));
+        onRetry?.({ attempt, delayMs: d, reason: "Alpha Vantage soft limit" });
+        await sleep(d);
+        continue;
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+      return data;
+    } catch (err) {
+      lastErr = err;
+      const d = computeDelay(attempt, o);
+      onRetry?.({ attempt, delayMs: d, reason: (err as Error).message || "network error" });
+      await sleep(d);
+    }
+  }
+  throw lastErr ?? new Error("fetchJsonWithBackoff: failed after retries");
+}
+
+// caching (optional via --cache-dir). If permissions are missing, we skip cache.
+async function sha1Hex(s: string): Promise<string> {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest("SHA-1", buf);
+  const u8 = new Uint8Array(hash);
+  return Array.from(u8).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function cachedFetchJson(
+  url: string,
+  opts: { cacheDir?: string; ttlSec?: number } = {},
+  backoff?: BackoffOpts,
+  onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
+): Promise<any> {
+  const { cacheDir, ttlSec = 3600 } = opts;
+  if (!cacheDir) return fetchJsonWithBackoff(url, backoff, onRetry);
+
+  let canCache = true;
+  try {
+    await ensureDir(cacheDir);
+  } catch (err) {
+    if (err instanceof Deno.errors.PermissionDenied) {
+      console.error(colors.yellow("Cache disabled (missing --allow-read/--allow-write)."));
+      canCache = false;
+    } else throw err;
+  }
+  if (!canCache) return fetchJsonWithBackoff(url, backoff, onRetry);
+
+  const file = pathJoin(cacheDir, `${await sha1Hex(url)}.json`);
+  try {
+    const stat = await Deno.stat(file);
+    const ageSec = (Date.now() - (stat.mtime?.getTime() ?? 0)) / 1000;
+    if (ageSec <= ttlSec) {
+      const text = await Deno.readTextFile(file);
+      return JSON.parse(text);
+    }
+  } catch {
+    // cache miss
+  }
+
+  const data = await fetchJsonWithBackoff(url, backoff, onRetry);
+  try {
+    await Deno.writeTextFile(file, JSON.stringify(data));
+  } catch {
+    // ignore cache write errors
+  }
+  return data;
+}
+
+// limited concurrency
+async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let i = 0, active = 0;
+  return await new Promise<R[]>((resolve, reject) => {
+    const next = () => {
+      if (i >= items.length && active === 0) return resolve(results);
+      while (active < limit && i < items.length) {
+        const idx = i++;
+        active++;
+        Promise.resolve(fn(items[idx], idx))
+          .then((val) => results[idx] = val)
+          .catch(reject)
+          .finally(() => { active--; next(); });
+      }
+    };
+    next();
+  });
+}
+
+// --------------------------- Utilities & types ---------------------------
+function validateTicker(s: string) {
+  // allow letters, digits, dots, dashes, and optional "EXCH:SYM"
+  return /^[A-Z0-9.\-:]+$/.test(s);
+}
+function fmtMoney(n: number) {
+  if (!Number.isFinite(n)) return "—";
+  return `$${n.toFixed(2)}`;
+}
+function fmtInt(n: number) {
+  if (!Number.isFinite(n)) return "—";
+  return Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
+function parseChangePercent(s?: string) {
+  if (!s) return NaN;
+  const m = s.trim().match(/^(-?\d+(?:\.\d+)?)%$/);
+  if (!m) return NaN;
+  return Number(m[1]) / 100;
+}
+
+type GlobalQuote = {
+  ["01. symbol"]?: string;
+  ["05. price"]?: string;
+  ["06. volume"]?: string;
+  ["07. latest trading day"]?: string;
+  ["08. previous close"]?: string;
+  ["09. change"]?: string;
+  ["10. change percent"]?: string;
+};
+type DailyRow = {
+  ["1. open"]: string;
+  ["2. high"]: string;
+  ["3. low"]: string;
+  ["4. close"]: string;
+  ["5. adjusted close"]: string;
+  ["6. volume"]: string;
+  ["8. split coefficient"]?: string;
+};
+type DailyResp = { ["Time Series (Daily)"]?: Record<string, DailyRow> };
+type NewsResp = { feed?: Array<{ title?: string; url?: string; time_published?: string; tickers?: string[] }> };
+
+// --------------------------- Alpha Vantage URLs ---------------------------
+const AV_BASE = "https://www.alphavantage.co/query";
+function av(params: Record<string, string>) {
+  const u = new URL(AV_BASE);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  u.searchParams.set("apikey", API_KEY);
+  return u.toString();
+}
+
+// --------------------------- Data fetchers ---------------------------
+async function fetchGlobalQuote(symbol: string) {
+  const url = av({ function: "GLOBAL_QUOTE", symbol });
+  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 60 }, {}, logRetry);
+  return (data?.["Global Quote"] ?? {}) as GlobalQuote;
+}
+async function fetchDailyAdjusted(symbol: string) {
+  const url = av({ function: "TIME_SERIES_DAILY_ADJUSTED", symbol, outputsize: "full" });
+  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 6 * 3600 }, {}, logRetry);
+  return data as DailyResp;
+}
+async function fetchTickerNews(symbol: string, limit = 6, daysBack = 60) {
+  const dt = new Date(Date.now() - daysBack * 86400_000);
+  const iso = dt.toISOString().slice(0, 19) + "Z";
+  const url = av({
+    function: "NEWS_SENTIMENT",
+    tickers: symbol,
+    limit: String(limit),
+    sort: "LATEST",
+    time_from: iso,
+  });
+  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
+  return (data ?? {}) as NewsResp;
+}
+async function fetchTopNews(limit = 10, daysBack = 3) {
+  const dt = new Date(Date.now() - daysBack * 86400_000);
+  const iso = dt.toISOString().slice(0, 19) + "Z";
+  const url = av({
+    function: "NEWS_SENTIMENT",
+    topics: "financial_markets,earnings",
+    limit: String(limit),
+    sort: "LATEST",
+    time_from: iso,
+  });
+  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
+  return (data ?? {}) as NewsResp;
+}
+
+function logRetry({ attempt, delayMs, reason }: { attempt: number; delayMs: number; reason: string }) {
+  console.error(colors.gray(`[retry #${attempt}] ${reason}; waiting ${delayMs}ms`));
+}
+
+// --------------------------- Core calcs ---------------------------
+function computeMetrics(daily: DailyResp) {
+  const rows = daily?.["Time Series (Daily)"] ?? {};
+  const dates = Object.keys(rows).sort((a, b) => (a < b ? 1 : -1)); // desc
+  // Use last ~252 trading days for 52w window (pad a bit)
+  const window = dates.slice(0, 270);
+
+  let high52 = -Infinity;
+  let volSum30 = 0;
+  let volCount = 0;
+
+  for (let i = 0; i < window.length; i++) {
+    const r = rows[window[i]];
+    const hi = Number(r["2. high"]);
+    const close = Number(r["4. close"]);
+    const adjClose = Number(r["5. adjusted close"]);
+    const multiplier = (Number.isFinite(adjClose) && Number.isFinite(close) && close !== 0) ? adjClose / close : 1;
+    const adjHigh = hi * multiplier;
+    if (Number.isFinite(adjHigh)) high52 = Math.max(high52, adjHigh);
+
+    if (i < 30) {
+      const v = Number(r["6. volume"]);
+      if (Number.isFinite(v)) {
+        volSum30 += v;
+        volCount++;
+      }
     }
   }
 
-  symbols = symbols.filter(validateTicker);
-  if(!symbols.length && !showTopNews){ console.error(red('No valid tickers')); Deno.exit(1); }
+  const avgVol30 = volCount ? volSum30 / volCount : NaN;
+  const high52Val = Number.isFinite(high52) ? high52 : NaN;
+  return { high52: high52Val, avgVol30 };
+}
 
+// --------------------------- Printing ---------------------------
+function printHelp() {
+  console.log(`fetch_quote.ts — quick market lookups via Alpha Vantage
+
+Usage:
+  ./fetch_quote.ts [options] [TICKERS...]
+
+Options:
+  -t, --ticker <LIST>     Comma-separated tickers (e.g. AAPL,MSFT)
+  --buy-pct <N>           Buy zone % below 52w high (default 7)
+  --sell-pct <N>          Sell threshold % below 52w high (default 8)
+  --news                  Include ticker news
+  --top-news              Show general market headlines only
+  -c, --concurrency <N>   Process N tickers in parallel (default 2)
+  --cache-dir <PATH>      Enable JSON cache at PATH (requires --allow-read --allow-write)
+  -h, --help              Show help
+
+Examples:
+  ./fetch_quote.ts -t AAPL,MSFT
+  ./fetch_quote.ts -t CRM --news
+  ./fetch_quote.ts --top-news
+  ./fetch_quote.ts -t NVDA,GOOGL,TSLA --concurrency 2
+
+Environment:
+  ALPHA_VANTAGE_API_KEY   Your API key
+`);
+}
+
+function header(sym: string) {
+  console.log(colors.bold(`\n=== ${sym} ===`));
+}
+
+function printQuoteLine(q: GlobalQuote) {
+  const price = Number(q["05. price"]);
+  const change = Number(q["09. change"]);
+  const cp = parseChangePercent(q["10. change percent"]);
+  const date = q["07. latest trading day"] || "";
+
+  const pStr = fmtMoney(price);
+  const chStr = `${change >= 0 ? "+" : ""}${fmtMoney(change)}`;
+  const cpStr = Number.isFinite(cp) ? ` (${(cp * 100 >= 0 ? "+" : "")}${(cp * 100).toFixed(2)}%)` : "";
+
+  const colored =
+    (change > 0 || cp > 0) ? colors.green(`${pStr} ${chStr}${cpStr}`) :
+      (change < 0 || cp < 0) ? colors.red(`${pStr} ${chStr}${cpStr}`) :
+        `${pStr} ${chStr}${cpStr}`;
+
+  console.log(`Price: ${colored} ${colors.gray(date ? `on ${date}` : "")}`);
+}
+
+function printZones(high52: number, buyPct: number, sellPct: number) {
+  const buyLow = high52 * (1 - buyPct / 100);
+  const sellThresh = high52 * (1 - sellPct / 100);
+  console.log(`52w High (adj): ${fmtMoney(high52)}`);
+  console.log(`Buy Zone: ${fmtMoney(buyLow)} .. ${fmtMoney(high52)} (${(buyPct).toFixed(1)}%)`);
+  console.log(`Sell if < ${fmtMoney(sellThresh)} (${(sellPct).toFixed(1)}%)`);
+}
+
+function printSignal(price: number, high52: number, buyPct: number, sellPct: number) {
+  if (!Number.isFinite(price) || !Number.isFinite(high52) || high52 <= 0) return;
+  const buyLow = high52 * (1 - buyPct / 100);
+  const sellThresh = high52 * (1 - sellPct / 100);
+
+  if (price <= sellThresh) {
+    console.log(colors.bold(colors.red("SELL")));
+  } else if (price >= buyLow && price <= high52) {
+    console.log(colors.bold(colors.green("BUY")));
+  }
+  // Else: no label (keeps it simple)
+}
+
+function printVolume(todayVol: number, avgVol30: number) {
+  if (!Number.isFinite(todayVol) || !Number.isFinite(avgVol30) || avgVol30 === 0) {
+    console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)}`);
+    return;
+  }
+  const diff = (todayVol - avgVol30) / avgVol30;
+  const diffStr = (diff >= 0 ? "+" : "") + (diff * 100).toFixed(1) + "%";
+  const colored = diff >= 0 ? colors.green(diffStr) : colors.red(diffStr);
+  console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)} (${colored})`);
+}
+
+function printTickerNews(n: NewsResp) {
+  const feed = n.feed ?? [];
+  if (feed.length === 0) {
+    console.log(colors.gray("No recent headlines."));
+    return;
+  }
+  for (const item of feed.slice(0, 6)) {
+    const when = parseNewsTime(item.time_published);
+    console.log(`- ${item.title || "Untitled"} ${colors.gray(when)} ${colors.gray(item.url || "")}`);
+  }
+}
+
+function parseNewsTime(s?: string): string {
+  if (!s) return "";
+  // AV format example: "20230914T210000"
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
+  if (!m) return s;
+  const [_, Y, M, D, h, m2, s2] = m;
+  const d = new Date(`${Y}-${M}-${D}T${h}:${m2}:${s2}Z`);
+  return d.toISOString().replace(".000", "");
+}
+
+// --------------------------- Pipeline ---------------------------
+async function processTicker(sym: string) {
+  header(sym);
+
+  // Quote
+  const q = await fetchGlobalQuote(sym);
+  printQuoteLine(q);
+  const todayVol = Number(q["06. volume"]);
+  const priceNow = Number(q["05. price"]);
+
+  // Daily (for 52w & avg volume)
+  const daily = await fetchDailyAdjusted(sym);
+  const { high52, avgVol30 } = computeMetrics(daily);
+  printZones(high52, buyPct, sellPct);
+
+  // Simple signal
+  printSignal(priceNow, high52, buyPct, sellPct);
+
+  // Volume check
+  printVolume(todayVol, avgVol30);
+
+  // News
+  if (showNews) {
+    console.log(colors.bold("News:"));
+    const news = await fetchTickerNews(sym, 6);
+    printTickerNews(news);
+  }
+}
+
+async function main() {
   if (showTopNews) {
-    const general = await fetchTopNews();
-    if (general.length) printTopNews(general);
-    else console.log('No general market headlines found.');
+    console.log(colors.bold("Top market headlines:"));
+    const news = await fetchTopNews(10);
+    printTickerNews(news);
+    if (tickers.length === 0) return;
+    console.log("");
   }
-  for(const sym of symbols){
-    try{
-      // Quote
-      const q = await fetchWithRetry(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${API_KEY}`)
-        .then(r=>r.json()).then(d=>d['Global Quote']);
-      const price = parseFloat(q['05. price']);
-      const change = parseFloat(q['09. change']);
-      const changePct=q['10. change percent'];
-      console.log(bold(`\n${sym} @ ${q['07. latest trading day']}:`));
-      console.log(` Price: ${change>=0?green(`$${price}`):red(`$${price}`)} (${change>=0?'+':''}${change} ${changePct})`);
 
-      // History data
-      const { highs, volumes, dates } = await fetchWithRetry(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${sym}&outputsize=full&entitlement=delayed&apikey=${API_KEY}`)
-        .then(r=>r.json()).then(json=>{
-          const series = json['Time Series (Daily)'];
-          const ld=q['07. latest trading day']; const cutoff=new Date(ld); cutoff.setDate(cutoff.getDate()-52*7);
-          return Object.entries(series).map(([d,v])=>({d, time:new Date(d).getTime(), h:parseFloat(v['2. high'])*(parseFloat(v['5. adjusted close'])/parseFloat(v['4. close'])), vol:parseFloat(v['6. volume'])}))
-            .filter(e=>e.time>=cutoff.getTime()).sort((a,b)=>a.time-b.time);
-        }).then(arr=>({highs:arr.map(x=>x.h), volumes:arr.map(x=>x.vol), dates:arr.map(x=>x.d)}));
+  await mapLimit(tickers, concurrency, async (t) => {
+    try {
+      await processTicker(t);
+    } catch (err) {
+      console.error(colors.red(`Error for ${t}: ${(err as Error).message}`));
+    }
+  });
+}
 
-      // Volume analysis
-      const recent = dates[dates.length-1]===q['07. latest trading day']?volumes.slice(-31,-1):volumes.slice(-30);
-      const avgVol = recent.reduce((a,b)=>a+b,0)/recent.length;
-      const todayVol = volumes[volumes.length-1];
-      const volPct=(todayVol-avgVol)/avgVol;
-      const volColor = todayVol>avgVol?green:red;
-      console.log(` Volume: ${volColor(todayVol.toLocaleString())}  Avg30: ${Math.round(avgVol).toLocaleString()}  ${volColor((volPct>=0?'+':'')+pct(volPct))}`);
-
-      // CANSLIM zones
-      const todayHigh=parseFloat(q['03. high']);
-      const high52=Math.max(...highs,todayHigh);
-      const buyLow=high52*(1-buyPct), sellThr=high52*(1-sellPct);
-      console.log(` 52wk High: $${high52.toFixed(2)}`);
-      console.log(` BuyZone : $${buyLow.toFixed(2)} - $${high52.toFixed(2)} (${pct(buyPct)} below)`);
-      console.log(` Sell<   : $${sellThr.toFixed(2)} (${pct(sellPct)} below)`);
-      console.log(price>=buyLow&&price<=high52?green(' → Buy zone'):price<sellThr?red(' → Sell'):yellow(' → Hold'));
-
-      // NEWS
-      if (!showTopNews) {
-        const tickerNews = await fetchNews(sym);
-        const displayedNews = showAllTickerNews ? tickerNews : tickerNews.slice(0, 3);
-        if (displayedNews.length) {
-          console.log(bold(`\n${showAllTickerNews ? 'All recent news' : 'Top 3 news'} for ${sym}:`));
-          displayedNews.forEach(n => console.log(` - ${n.title}`));
-        } else {
-          console.log(`No recent news found for ${sym}.`);
-        }
-      }
-
-      console.log('-'.repeat(60));
-    }catch(e){ console.error(red(`Error ${sym}: ${e.message}`)); }
-  }
-})();
+if (import.meta.main) {
+  await main();
+}
