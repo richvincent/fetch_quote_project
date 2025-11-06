@@ -1,5 +1,6 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env
 // fetch_quote.ts
+// NOTE: Add --allow-read --allow-write if using --cache-dir option
 
 // std deps
 import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
@@ -7,18 +8,40 @@ import * as colors from "https://deno.land/std@0.224.0/fmt/colors.ts";
 import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import { join as pathJoin } from "https://deno.land/std@0.224.0/path/mod.ts";
 
+// ----------------------------- Constants -----------------------------
+const TRADING_DAYS_PER_YEAR = 252;
+const TRADING_DAYS_WITH_PADDING = 270; // ~252 trading days + padding for holidays
+const VOLUME_WINDOW_DAYS = 30;
+const NEWS_DISPLAY_LIMIT = 6;
+const DEFAULT_CONCURRENCY = 2;
+const MAX_CONCURRENCY = 10;
+const MIN_SOFT_LIMIT_DELAY_MS = 10_000;
+
 // ----------------------------- CLI parsing -----------------------------
 const args = parse(Deno.args, {
   alias: { t: "ticker", h: "help", c: "concurrency" },
   boolean: ["news", "top-news", "help"],
   string: ["ticker", "cache-dir"],
-  default: { concurrency: 2 },
+  default: { concurrency: DEFAULT_CONCURRENCY },
 });
 
 const buyPct = Number(args["buy-pct"] ?? args.buyPct ?? 7);
 const sellPct = Number(args["sell-pct"] ?? args.sellPct ?? 8);
-const concurrency = Math.max(1, Number(args.concurrency ?? 2));
+const concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(args.concurrency ?? DEFAULT_CONCURRENCY)));
 const cacheDir = typeof args["cache-dir"] === "string" ? args["cache-dir"] : undefined;
+
+// Validate percentage parameters
+if (!Number.isFinite(buyPct) || buyPct < 0 || buyPct > 100) {
+  console.error(colors.red(`Invalid buy-pct: must be 0-100, got ${buyPct}`));
+  Deno.exit(1);
+}
+if (!Number.isFinite(sellPct) || sellPct < 0 || sellPct > 100) {
+  console.error(colors.red(`Invalid sell-pct: must be 0-100, got ${sellPct}`));
+  Deno.exit(1);
+}
+if (sellPct < buyPct) {
+  console.error(colors.red(`Warning: sell-pct (${sellPct}) should typically be >= buy-pct (${buyPct})`));
+}
 
 let tickers: string[] = [];
 if (args.ticker) tickers = String(args.ticker).split(",").map((s) => s.trim());
@@ -68,17 +91,19 @@ function computeDelay(attempt: number, o: Required<BackoffOpts>) {
 }
 function isAVSoftLimit(obj: unknown): boolean {
   if (!obj || typeof obj !== "object") return false;
-  const note = (obj as any).Note ?? (obj as any).Information;
+  const record = obj as Record<string, unknown>;
+  const note = record.Note ?? record.Information;
   if (typeof note !== "string") return false;
   const s = note.toLowerCase();
   return s.includes("frequency") || s.includes("limit") || s.includes("please consider");
 }
 
-async function fetchJsonWithBackoff(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchJsonWithBackoff<T = any>(
   url: string,
   backoff: BackoffOpts = {},
   onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
-): Promise<any> {
+): Promise<T> {
   const o = { ...DEFAULT_BACKOFF, ...backoff };
   let lastErr: unknown = undefined;
 
@@ -94,16 +119,16 @@ async function fetchJsonWithBackoff(
       }
 
       const text = await res.text();
-      let data: any;
+      let data: T;
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
-        return text;
+        return text as T;
       }
 
       if (isAVSoftLimit(data)) {
-        const d = Math.max(10_000, computeDelay(attempt, o));
+        const d = Math.max(MIN_SOFT_LIMIT_DELAY_MS, computeDelay(attempt, o));
         onRetry?.({ attempt, delayMs: d, reason: "Alpha Vantage soft limit" });
         await sleep(d);
         continue;
@@ -128,25 +153,29 @@ async function sha1Hex(s: string): Promise<string> {
   const u8 = new Uint8Array(hash);
   return Array.from(u8).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-async function cachedFetchJson(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function cachedFetchJson<T = any>(
   url: string,
   opts: { cacheDir?: string; ttlSec?: number } = {},
   backoff?: BackoffOpts,
   onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
-): Promise<any> {
+): Promise<T> {
   const { cacheDir, ttlSec = 3600 } = opts;
-  if (!cacheDir) return fetchJsonWithBackoff(url, backoff, onRetry);
+  if (!cacheDir) return fetchJsonWithBackoff<T>(url, backoff, onRetry);
 
   let canCache = true;
   try {
     await ensureDir(cacheDir);
   } catch (err) {
     if (err instanceof Deno.errors.PermissionDenied) {
-      console.error(colors.yellow("Cache disabled (missing --allow-read/--allow-write)."));
+      console.warn(colors.yellow("Cache disabled (missing --allow-read/--allow-write)."));
       canCache = false;
-    } else throw err;
+    } else {
+      console.warn(colors.yellow(`Cache directory error: ${(err as Error).message}`));
+      canCache = false;
+    }
   }
-  if (!canCache) return fetchJsonWithBackoff(url, backoff, onRetry);
+  if (!canCache) return fetchJsonWithBackoff<T>(url, backoff, onRetry);
 
   const file = pathJoin(cacheDir, `${await sha1Hex(url)}.json`);
   try {
@@ -160,11 +189,11 @@ async function cachedFetchJson(
     // cache miss
   }
 
-  const data = await fetchJsonWithBackoff(url, backoff, onRetry);
+  const data = await fetchJsonWithBackoff<T>(url, backoff, onRetry);
   try {
     await Deno.writeTextFile(file, JSON.stringify(data));
-  } catch {
-    // ignore cache write errors
+  } catch (err) {
+    console.warn(colors.yellow(`Cache write failed: ${(err as Error).message}`));
   }
   return data;
 }
@@ -240,17 +269,17 @@ function av(params: Record<string, string>) {
 }
 
 // --------------------------- Data fetchers ---------------------------
-async function fetchGlobalQuote(symbol: string) {
+async function fetchGlobalQuote(symbol: string): Promise<GlobalQuote> {
   const url = av({ function: "GLOBAL_QUOTE", symbol });
-  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 60 }, {}, logRetry);
-  return (data?.["Global Quote"] ?? {}) as GlobalQuote;
+  const data = await cachedFetchJson<{ "Global Quote"?: GlobalQuote }>(url, { cacheDir, ttlSec: 60 }, {}, logRetry);
+  return data?.["Global Quote"] ?? {} as GlobalQuote;
 }
-async function fetchDailyAdjusted(symbol: string) {
+async function fetchDailyAdjusted(symbol: string): Promise<DailyResp> {
   const url = av({ function: "TIME_SERIES_DAILY_ADJUSTED", symbol, outputsize: "full" });
-  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 6 * 3600 }, {}, logRetry);
-  return data as DailyResp;
+  const data = await cachedFetchJson<DailyResp>(url, { cacheDir, ttlSec: 6 * 3600 }, {}, logRetry);
+  return data;
 }
-async function fetchTickerNews(symbol: string, limit = 6, daysBack = 60) {
+async function fetchTickerNews(symbol: string, limit = NEWS_DISPLAY_LIMIT, daysBack = 60): Promise<NewsResp> {
   const dt = new Date(Date.now() - daysBack * 86400_000);
   const iso = dt.toISOString().slice(0, 19) + "Z";
   const url = av({
@@ -260,10 +289,10 @@ async function fetchTickerNews(symbol: string, limit = 6, daysBack = 60) {
     sort: "LATEST",
     time_from: iso,
   });
-  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
-  return (data ?? {}) as NewsResp;
+  const data = await cachedFetchJson<NewsResp>(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
+  return data ?? {} as NewsResp;
 }
-async function fetchTopNews(limit = 10, daysBack = 3) {
+async function fetchTopNews(limit = 10, daysBack = 3): Promise<NewsResp> {
   const dt = new Date(Date.now() - daysBack * 86400_000);
   const iso = dt.toISOString().slice(0, 19) + "Z";
   const url = av({
@@ -273,8 +302,8 @@ async function fetchTopNews(limit = 10, daysBack = 3) {
     sort: "LATEST",
     time_from: iso,
   });
-  const data = await cachedFetchJson(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
-  return (data ?? {}) as NewsResp;
+  const data = await cachedFetchJson<NewsResp>(url, { cacheDir, ttlSec: 600 }, {}, logRetry);
+  return data ?? {} as NewsResp;
 }
 
 function logRetry({ attempt, delayMs, reason }: { attempt: number; delayMs: number; reason: string }) {
@@ -285,8 +314,8 @@ function logRetry({ attempt, delayMs, reason }: { attempt: number; delayMs: numb
 function computeMetrics(daily: DailyResp) {
   const rows = daily?.["Time Series (Daily)"] ?? {};
   const dates = Object.keys(rows).sort((a, b) => (a < b ? 1 : -1)); // desc
-  // Use last ~252 trading days for 52w window (pad a bit)
-  const window = dates.slice(0, 270);
+  // Use last ~252 trading days for 52w window (pad a bit for holidays/weekends)
+  const window = dates.slice(0, TRADING_DAYS_WITH_PADDING);
 
   let high52 = -Infinity;
   let volSum30 = 0;
@@ -301,7 +330,7 @@ function computeMetrics(daily: DailyResp) {
     const adjHigh = hi * multiplier;
     if (Number.isFinite(adjHigh)) high52 = Math.max(high52, adjHigh);
 
-    if (i < 30) {
+    if (i < VOLUME_WINDOW_DAYS) {
       const v = Number(r["6. volume"]);
       if (Number.isFinite(v)) {
         volSum30 += v;
@@ -324,11 +353,11 @@ Usage:
 
 Options:
   -t, --ticker <LIST>     Comma-separated tickers (e.g. AAPL,MSFT)
-  --buy-pct <N>           Buy zone % below 52w high (default 7)
-  --sell-pct <N>          Sell threshold % below 52w high (default 8)
+  --buy-pct <N>           Buy zone % below 52w high (default 7, range 0-100)
+  --sell-pct <N>          Sell threshold % below 52w high (default 8, range 0-100)
   --news                  Include ticker news
   --top-news              Show general market headlines only
-  -c, --concurrency <N>   Process N tickers in parallel (default 2)
+  -c, --concurrency <N>   Process N tickers in parallel (default ${DEFAULT_CONCURRENCY}, max ${MAX_CONCURRENCY})
   --cache-dir <PATH>      Enable JSON cache at PATH (requires --allow-read --allow-write)
   -h, --help              Show help
 
@@ -339,7 +368,8 @@ Examples:
   ./fetch_quote.ts -t NVDA,GOOGL,TSLA --concurrency 2
 
 Environment:
-  ALPHA_VANTAGE_API_KEY   Your API key
+  ALPHA_VANTAGE_API_KEY   Your API key (required)
+  DEBUG                   Show stack traces on errors (optional)
 `);
 }
 
@@ -403,7 +433,7 @@ function printTickerNews(n: NewsResp) {
     console.log(colors.gray("No recent headlines."));
     return;
   }
-  for (const item of feed.slice(0, 6)) {
+  for (const item of feed.slice(0, NEWS_DISPLAY_LIMIT)) {
     const when = parseNewsTime(item.time_published);
     console.log(`- ${item.title || "Untitled"} ${colors.gray(when)} ${colors.gray(item.url || "")}`);
   }
@@ -461,7 +491,11 @@ async function main() {
     try {
       await processTicker(t);
     } catch (err) {
-      console.error(colors.red(`Error for ${t}: ${(err as Error).message}`));
+      const error = err as Error;
+      console.error(colors.red(`Error for ${t}: ${error.message}`));
+      if (error.stack && Deno.env.get("DEBUG")) {
+        console.error(colors.gray(error.stack));
+      }
     }
   });
 }
