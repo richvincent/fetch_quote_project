@@ -1,0 +1,20 @@
+# API Keys (sensitive)
+*api_key.txt
+*.key
+
+# Archive/legacy code
+archive/
+
+# Cache directories
+.cache/
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
