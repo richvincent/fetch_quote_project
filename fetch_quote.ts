@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read=alpha_vantage_api_key.txt
+#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 // fetch_quote.ts
 
 // std deps
@@ -6,6 +6,9 @@ import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
 import * as colors from "https://deno.land/std@0.224.0/fmt/colors.ts";
 import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import { join as pathJoin } from "https://deno.land/std@0.224.0/path/mod.ts";
+
+// npm deps for charting
+import asciichart from "asciichart";
 
 // ----------------------------- Constants -----------------------------
 const CONFIG = {
@@ -27,7 +30,7 @@ const CONFIG = {
 // ----------------------------- CLI parsing -----------------------------
 const args = parse(Deno.args, {
   alias: { t: "ticker", h: "help", c: "concurrency" },
-  boolean: ["news", "top-news", "help"],
+  boolean: ["news", "top-news", "help", "chart"],
   string: ["ticker", "cache-dir"],
   default: { concurrency: CONFIG.DEFAULT_CONCURRENCY },
 });
@@ -44,6 +47,7 @@ tickers = tickers.map((s) => s.toUpperCase()).filter(Boolean).filter(validateTic
 
 const showNews = !!args.news;
 const showTopNews = !!args["top-news"];
+const showChart = !!args.chart;
 const showHelp = !!args.help;
 
 if (showHelp || (!showTopNews && tickers.length === 0)) {
@@ -449,6 +453,151 @@ function computeMetrics(daily: DailyResp) {
   return { high52: high52Val, avgVol30 };
 }
 
+// --------------------------- Terminal Detection ---------------------------
+type TerminalCapability = "enhanced" | "basic";
+
+/**
+ * Detects terminal's capabilities for enhanced display
+ * @returns Terminal type: enhanced (supports 256 colors) or basic
+ */
+function detectTerminalCapability(): TerminalCapability {
+  const term = Deno.env.get("TERM") || "";
+  const colorterm = Deno.env.get("COLORTERM") || "";
+
+  // Check for truecolor or 256 color support
+  if (colorterm === "truecolor" || term.includes("256color") || term.includes("xterm")) {
+    return "enhanced";
+  }
+
+  return "basic";
+}
+
+// --------------------------- Chart Generation ---------------------------
+/**
+ * Extracts recent price history from daily data
+ * @param daily - Alpha Vantage daily time series response
+ * @param days - Number of recent days to extract
+ * @returns Array of {date, price} objects sorted chronologically
+ */
+function extractPriceHistory(daily: DailyResp, days = 90): Array<{date: string, price: number}> {
+  const rows = daily?.["Time Series (Daily)"] ?? {};
+  const dates = Object.keys(rows).sort((a, b) => (a < b ? 1 : -1)); // desc
+  const recent = dates.slice(0, days).reverse(); // chronological order
+
+  return recent.map(date => ({
+    date,
+    price: Number(rows[date]["5. adjusted close"]) || Number(rows[date]["4. close"])
+  })).filter(d => Number.isFinite(d.price));
+}
+
+/**
+ * Renders ASCII chart using asciichart
+ * @param history - Array of {date, price} objects in chronological order
+ * @param symbol - Stock ticker symbol for title
+ * @param high52 - 52-week high for reference
+ * @param enhanced - Use enhanced colors for modern terminals
+ */
+function renderAsciiChart(history: Array<{date: string, price: number}>, symbol: string, high52: number, enhanced: boolean) {
+  if (history.length === 0) {
+    console.log(colors.gray("No chart data available"));
+    return;
+  }
+
+  const data = history.map(h => h.price);
+
+  // Get terminal size with fallback
+  let termRows = 40; // default
+  let termCols = 100; // default
+  try {
+    const size = Deno.consoleSize();
+    termRows = size.rows;
+    termCols = size.columns;
+  } catch {
+    // Fallback if consoleSize() not available
+  }
+
+  const height = Math.min(15, Math.max(10, Math.floor(termRows / 3)));
+
+  const chart = asciichart.plot(data, {
+    height,
+    format: (x: number) => fmtMoney(x).padStart(10),
+    colors: enhanced ? [
+      asciichart.cyan,
+      asciichart.lightcyan
+    ] : undefined
+  });
+
+  console.log(colors.bold(`\n${symbol} - ${data.length} Day Price Chart`));
+
+  // Add stats
+  const current = data[data.length - 1];
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const change = ((current - data[0]) / data[0]) * 100;
+
+  console.log(colors.gray(`Range: ${fmtMoney(min)} - ${fmtMoney(max)} | 52w High: ${fmtMoney(high52)} | Period: ${change >= 0 ? colors.green("+" + change.toFixed(2) + "%") : colors.red(change.toFixed(2) + "%")}`));
+  console.log();
+
+  // Display chart with color if enhanced
+  if (enhanced) {
+    console.log(colors.cyan(chart));
+  } else {
+    console.log(chart);
+  }
+
+  // Add x-axis timeline
+  // Strip ANSI codes to get actual character width
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+  const chartLines = chart.split('\n');
+  const actualChartWidth = chartLines[0] ? stripAnsi(chartLines[0]).length : termCols;
+  const yAxisWidth = 11; // Width of the y-axis labels (price format padding)
+  const plotWidth = actualChartWidth - yAxisWidth;
+
+  // Determine how many date labels to show based on available space
+  // Each label needs ~5 chars (MM-DD) + minimum spacing
+  const labelWidth = 5; // MM-DD format
+  const minSpacing = 8; // Minimum spaces between labels for readability
+  const maxLabels = Math.floor(plotWidth / (labelWidth + minSpacing));
+  const numLabels = Math.min(5, Math.max(3, maxLabels)); // Limit to 3-5 labels
+
+  // Build evenly-spaced x-axis timeline
+  let xAxis = " ".repeat(yAxisWidth);
+  const availableWidth = plotWidth - (numLabels * labelWidth);
+  const spacing = Math.floor(availableWidth / (numLabels - 1));
+
+  for (let i = 0; i < numLabels; i++) {
+    const idx = i === numLabels - 1 ? history.length - 1 : Math.floor(i * (history.length - 1) / (numLabels - 1));
+    const dateStr = history[idx].date.slice(5); // MM-DD format
+
+    if (i > 0) {
+      xAxis += " ".repeat(spacing);
+    }
+    xAxis += dateStr;
+  }
+
+  console.log(colors.gray(xAxis));
+}
+
+/**
+ * Main chart display function with automatic terminal enhancement
+ * @param daily - Daily price data
+ * @param symbol - Stock ticker symbol
+ * @param high52 - 52-week high for reference
+ */
+function displayChart(daily: DailyResp, symbol: string, high52: number) {
+  const history = extractPriceHistory(daily, 180);
+  if (history.length === 0) {
+    console.log(colors.gray("No chart data available"));
+    return;
+  }
+
+  const capability = detectTerminalCapability();
+  const enhanced = capability === "enhanced";
+
+  // Display ASCII chart with optional enhancements
+  renderAsciiChart(history, symbol, high52, enhanced);
+}
+
 // --------------------------- Printing ---------------------------
 function printHelp() {
   console.log(`fetch_quote.ts — quick market lookups via Alpha Vantage
@@ -462,6 +611,7 @@ Options:
   --sell-pct <N>          Sell threshold % below 52w high (default ${CONFIG.DEFAULT_SELL_PCT})
   --news                  Include ticker news
   --top-news              Show general market headlines only
+  --chart                 Show price chart (rich graphics for modern terminals, ASCII fallback)
   -c, --concurrency <N>   Process N tickers in parallel (default ${CONFIG.DEFAULT_CONCURRENCY})
   --cache-dir <PATH>      Enable JSON cache at PATH (requires --allow-read --allow-write)
   -h, --help              Show help
@@ -469,6 +619,7 @@ Options:
 Examples:
   ./fetch_quote.ts -t AAPL,MSFT
   ./fetch_quote.ts -t CRM --news
+  ./fetch_quote.ts -t AAPL --chart
   ./fetch_quote.ts --top-news
   ./fetch_quote.ts -t NVDA,GOOGL,TSLA --concurrency 2
 
@@ -583,6 +734,11 @@ async function processTicker(sym: string) {
   if (showNews) {
     console.log(colors.bold("News:"));
     printTickerNews(news);
+  }
+
+  // Chart
+  if (showChart) {
+    displayChart(daily, sym, high52);
   }
 }
 

@@ -1,0 +1,6 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "asciichart": "npm:asciichart@1.5.25"
+  }
+}
