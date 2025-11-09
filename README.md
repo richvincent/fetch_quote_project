@@ -10,6 +10,7 @@ A fast, command-line tool for retrieving real-time stock market data, technical 
 
 - 📈 **Real-time Stock Quotes** - Current price, volume, and daily change
 - 📊 **Technical Analysis** - 52-week high (split-adjusted), 30-day average volume
+- 📉 **Price Charts** - ASCII charts with automatic terminal enhancement detection
 - 🎯 **Buy/Sell Signals** - Configurable thresholds based on 52-week high
 - 📰 **Financial News** - Ticker-specific and general market headlines
 - ⚡ **High Performance** - Parallel API fetching and optional caching
@@ -71,6 +72,7 @@ A fast, command-line tool for retrieving real-time stock market data, technical 
 | `--sell-pct <N>` | Sell threshold percentage below 52-week high | 8 |
 | `--news` | Include ticker-specific news headlines | false |
 | `--top-news` | Show general market headlines only | false |
+| `--chart` | Display ASCII price chart (90-180 day history) | false |
 | `-c, --concurrency <N>` | Process N tickers in parallel | 2 |
 | `--cache-dir <PATH>` | Enable JSON caching at specified path | disabled |
 | `-h, --help` | Display help message | - |
@@ -96,6 +98,28 @@ Vol: 58,234,567 vs 30d avg 52,345,678 (+11.3%)
 ### Multiple Tickers with News
 ```bash
 ./fetch_quote.ts -t AAPL,MSFT,GOOGL --news --concurrency 3
+```
+
+### Price Chart
+```bash
+./fetch_quote.ts -t AAPL --chart
+```
+
+**Output:**
+```
+AAPL - 90 Day Price Chart
+Range: $165.23 - $199.62 | 52w High: $199.62 | Period: +7.89%
+
+   199.62 ┤        ╭╮
+   194.35 ┤       ╭╯╰╮
+   189.08 ┤      ╭╯  ╰╮
+   183.81 ┼─────╭╯    ╰╮
+   178.54 ┤    ╭╯      ╰─╮
+   173.27 ┤   ╭╯         ╰╮
+   168.00 ┤  ╭╯           ╰╮
+   162.73 ┤ ╭╯             ╰
+   157.46 ┤╭╯
+          10-15   11-01   11-15   12-01   01-08
 ```
 
 ### Custom Buy/Sell Thresholds
@@ -275,7 +299,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [ ] Technical indicators (RSI, MACD, Bollinger Bands)
 - [ ] Portfolio tracking
 - [ ] Price alerts
-- [ ] Chart generation
+- [x] Chart generation
 
 ## Acknowledgments
 
