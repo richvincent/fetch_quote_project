@@ -43,7 +43,7 @@ const cacheDir = typeof args["cache-dir"] === "string" ? args["cache-dir"] : und
 let tickers: string[] = [];
 if (args.ticker) tickers = String(args.ticker).split(",").map((s) => s.trim());
 tickers = tickers.concat(args._.map(String));
-tickers = tickers.map((s) => s.toUpperCase()).filter(Boolean).filter(validateTicker);
+tickers = tickers.map((s) => s.toUpperCase()).filter(validateTicker);
 
 const showNews = !!args.news;
 const showTopNews = !!args["top-news"];
@@ -111,7 +111,7 @@ function sleep(ms: number) {
  * @param o - Backoff configuration options
  * @returns Delay in milliseconds before next retry
  */
-function computeDelay(attempt: number, o: Required<BackoffOpts>) {
+function computeDelay(attempt: number, o: Required<BackoffOpts>): number {
   const base = Math.min(o.maxDelayMs, o.baseDelayMs * Math.pow(o.factor, attempt));
   const jitter = Math.floor(Math.random() * (o.jitterMs + 1));
   return base + jitter;
@@ -161,10 +161,10 @@ async function fetchJsonWithBackoff<T = unknown>(
       const text = await res.text();
       let data: T;
       try {
-        data = text ? JSON.parse(text) : {} as T;
+        data = text ? JSON.parse(text) : ({} as unknown as T);
       } catch {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
-        return text as T;
+        return text as unknown as T;
       }
 
       if (isAVSoftLimit(data)) {
@@ -276,19 +276,20 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: number) =
 }
 
 // --------------------------- Utilities & types ---------------------------
-function validateTicker(s: string) {
-  // allow letters, digits, dots, dashes, and optional "EXCH:SYM"
-  return /^[A-Z0-9.\-:]+$/.test(s);
+function validateTicker(s: string): boolean {
+  // Must start with letter, allow letters, digits, dots, dashes, and optional "EXCH:SYM"
+  // Examples: AAPL, BRK.B, TSX:RY, NYSE:BRK-A
+  return /^[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*(?::[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*)?$/.test(s);
 }
-function fmtMoney(n: number) {
+function fmtMoney(n: number): string {
   if (!Number.isFinite(n)) return "—";
   return `$${n.toFixed(2)}`;
 }
-function fmtInt(n: number) {
+function fmtInt(n: number): string {
   if (!Number.isFinite(n)) return "—";
   return Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 }
-function parseChangePercent(s?: string) {
+function parseChangePercent(s?: string): number {
   if (!s) return NaN;
   const m = s.trim().match(/^(-?\d+(?:\.\d+)?)%$/);
   if (!m) return NaN;
@@ -423,7 +424,7 @@ function logRetry({ attempt, delayMs, reason }: { attempt: number; delayMs: numb
  */
 function computeMetrics(daily: DailyResp) {
   const rows = daily?.["Time Series (Daily)"] ?? {};
-  const dates = Object.keys(rows).sort((a, b) => (a < b ? 1 : -1)); // desc
+  const dates = Object.keys(rows).sort((a, b) => b.localeCompare(a)); // desc
   const window = dates.slice(0, CONFIG.TRADING_DAYS_WINDOW);
 
   let high52 = -Infinity;
@@ -481,7 +482,7 @@ function detectTerminalCapability(): TerminalCapability {
  */
 function extractPriceHistory(daily: DailyResp, days = 90): Array<{date: string, price: number}> {
   const rows = daily?.["Time Series (Daily)"] ?? {};
-  const dates = Object.keys(rows).sort((a, b) => (a < b ? 1 : -1)); // desc
+  const dates = Object.keys(rows).sort((a, b) => b.localeCompare(a)); // desc
   const recent = dates.slice(0, days).reverse(); // chronological order
 
   return recent.map(date => ({
@@ -507,11 +508,9 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
 
   // Get terminal size with fallback
   let termRows = 40; // default
-  let termCols = 100; // default
   try {
     const size = Deno.consoleSize();
     termRows = size.rows;
-    termCols = size.columns;
   } catch {
     // Fallback if consoleSize() not available
   }
@@ -535,7 +534,12 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
   const max = Math.max(...data);
   const change = ((current - data[0]) / data[0]) * 100;
 
-  console.log(colors.gray(`Range: ${fmtMoney(min)} - ${fmtMoney(max)} | 52w High: ${fmtMoney(high52)} | Period: ${change >= 0 ? colors.green("+" + change.toFixed(2) + "%") : colors.red(change.toFixed(2) + "%")}`));
+  const changeStr = change >= 0
+    ? colors.green("+" + change.toFixed(2) + "%")
+    : colors.red(change.toFixed(2) + "%");
+  console.log(colors.gray(
+    `Range: ${fmtMoney(min)} - ${fmtMoney(max)} | 52w High: ${fmtMoney(high52)} | Period: ${changeStr}`
+  ));
   console.log();
 
   // Display chart with color if enhanced
@@ -549,7 +553,7 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
   // Strip ANSI codes to get actual character width
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
   const chartLines = chart.split('\n');
-  const actualChartWidth = chartLines[0] ? stripAnsi(chartLines[0]).length : termCols;
+  const actualChartWidth = chartLines[0] ? stripAnsi(chartLines[0]).length : 100;
   const yAxisWidth = 11; // Width of the y-axis labels (price format padding)
   const plotWidth = actualChartWidth - yAxisWidth;
 
@@ -599,7 +603,7 @@ function displayChart(daily: DailyResp, symbol: string, high52: number) {
 }
 
 // --------------------------- Printing ---------------------------
-function printHelp() {
+function printHelp(): void {
   console.log(`fetch_quote.ts — quick market lookups via Alpha Vantage
 
 Usage:
@@ -628,11 +632,11 @@ Environment:
 `);
 }
 
-function header(sym: string) {
+function header(sym: string): void {
   console.log(colors.bold(`\n=== ${sym} ===`));
 }
 
-function printQuoteLine(q: GlobalQuote) {
+function printQuoteLine(q: GlobalQuote): void {
   const price = Number(q["05. price"]);
   const change = Number(q["09. change"]);
   const cp = parseChangePercent(q["10. change percent"]);
@@ -650,7 +654,7 @@ function printQuoteLine(q: GlobalQuote) {
   console.log(`Price: ${colored} ${colors.gray(date ? `on ${date}` : "")}`);
 }
 
-function printZones(high52: number, buyPct: number, sellPct: number) {
+function printZones(high52: number, buyPct: number, sellPct: number): void {
   const buyLow = high52 * (1 - buyPct / 100);
   const sellThresh = high52 * (1 - sellPct / 100);
   console.log(`52w High (adj): ${fmtMoney(high52)}`);
@@ -658,7 +662,7 @@ function printZones(high52: number, buyPct: number, sellPct: number) {
   console.log(`Sell if < ${fmtMoney(sellThresh)} (${(sellPct).toFixed(1)}%)`);
 }
 
-function printSignal(price: number, high52: number, buyPct: number, sellPct: number) {
+function printSignal(price: number, high52: number, buyPct: number, sellPct: number): void {
   if (!Number.isFinite(price) || !Number.isFinite(high52) || high52 <= 0) return;
   const buyLow = high52 * (1 - buyPct / 100);
   const sellThresh = high52 * (1 - sellPct / 100);
@@ -671,7 +675,7 @@ function printSignal(price: number, high52: number, buyPct: number, sellPct: num
   // Else: no label (keeps it simple)
 }
 
-function printVolume(todayVol: number, avgVol30: number) {
+function printVolume(todayVol: number, avgVol30: number): void {
   if (!Number.isFinite(todayVol) || !Number.isFinite(avgVol30) || avgVol30 === 0) {
     console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)}`);
     return;
@@ -682,7 +686,7 @@ function printVolume(todayVol: number, avgVol30: number) {
   console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)} (${colored})`);
 }
 
-function printTickerNews(n: NewsResp) {
+function printTickerNews(n: NewsResp): void {
   const feed = n.feed ?? [];
   if (feed.length === 0) {
     console.log(colors.gray("No recent headlines."));
@@ -699,8 +703,8 @@ function parseNewsTime(s?: string): string {
   // AV format example: "20230914T210000"
   const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
   if (!m) return s;
-  const [_, Y, M, D, h, m2, s2] = m;
-  const d = new Date(`${Y}-${M}-${D}T${h}:${m2}:${s2}Z`);
+  const [, Y, M, D, h, min, sec] = m;
+  const d = new Date(`${Y}-${M}-${D}T${h}:${min}:${sec}Z`);
   return d.toISOString().replace(".000", "");
 }
 
