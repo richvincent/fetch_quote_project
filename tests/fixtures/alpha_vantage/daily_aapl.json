@@ -1,0 +1,61 @@
+{
+  "Meta Data": {
+    "1. Information": "Daily Time Series with Splits and Dividend Events",
+    "2. Symbol": "AAPL",
+    "3. Last Refreshed": "2026-02-07",
+    "4. Output Size": "Compact",
+    "5. Time Zone": "US/Eastern"
+  },
+  "Time Series (Daily)": {
+    "2026-02-07": {
+      "1. open": "182.35",
+      "2. high": "186.25",
+      "3. low": "181.72",
+      "4. close": "185.50",
+      "5. adjusted close": "185.50",
+      "6. volume": "58234567",
+      "7. dividend amount": "0.0000",
+      "8. split coefficient": "1.0"
+    },
+    "2026-02-06": {
+      "1. open": "180.50",
+      "2. high": "184.00",
+      "3. low": "179.25",
+      "4. close": "183.25",
+      "5. adjusted close": "183.25",
+      "6. volume": "52345678",
+      "7. dividend amount": "0.0000",
+      "8. split coefficient": "1.0"
+    },
+    "2026-02-05": {
+      "1. open": "178.00",
+      "2. high": "181.50",
+      "3. low": "177.25",
+      "4. close": "180.75",
+      "5. adjusted close": "180.75",
+      "6. volume": "48123456",
+      "7. dividend amount": "0.0000",
+      "8. split coefficient": "1.0"
+    },
+    "2026-02-04": {
+      "1. open": "176.25",
+      "2. high": "179.00",
+      "3. low": "175.50",
+      "4. close": "178.50",
+      "5. adjusted close": "178.50",
+      "6. volume": "45678901",
+      "7. dividend amount": "0.0000",
+      "8. split coefficient": "1.0"
+    },
+    "2026-02-03": {
+      "1. open": "175.00",
+      "2. high": "177.25",
+      "3. low": "174.00",
+      "4. close": "176.00",
+      "5. adjusted close": "176.00",
+      "6. volume": "42345678",
+      "7. dividend amount": "0.0000",
+      "8. split coefficient": "1.0"
+    }
+  }
+}
