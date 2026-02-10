@@ -3,7 +3,7 @@
  * @module providers/registry
  */
 
-import type { Quote, DailyBar, NewsItem } from "../core/types.ts";
+import type { DailyBar, NewsItem, Quote } from "../core/types.ts";
 import type { DataProvider, ProviderFeature } from "./types.ts";
 
 /**
@@ -101,12 +101,14 @@ export class ProviderRegistry {
     let lastError: Error | null = null;
     for (const provider of providers) {
       try {
-        if (await provider.isAvailable()) {
+        if (provider.isAvailable()) {
           return await provider.fetchQuote(symbol);
         }
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        console.error(`${provider.name} failed for ${symbol}: ${lastError.message}`);
+        console.error(
+          `${provider.name} failed for ${symbol}: ${lastError.message}`,
+        );
       }
     }
 
@@ -130,16 +132,19 @@ export class ProviderRegistry {
     let lastError: Error | null = null;
     for (const provider of providers) {
       try {
-        if (await provider.isAvailable()) {
+        if (provider.isAvailable()) {
           return await provider.fetchDaily(symbol, days);
         }
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        console.error(`${provider.name} daily failed for ${symbol}: ${lastError.message}`);
+        console.error(
+          `${provider.name} daily failed for ${symbol}: ${lastError.message}`,
+        );
       }
     }
 
-    throw lastError ?? new Error(`All providers failed for daily data: ${symbol}`);
+    throw lastError ??
+      new Error(`All providers failed for daily data: ${symbol}`);
   }
 
   /**
@@ -166,7 +171,9 @@ export class ProviderRegistry {
         }
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        console.error(`${provider.name} news failed for ${symbol}: ${lastError.message}`);
+        console.error(
+          `${provider.name} news failed for ${symbol}: ${lastError.message}`,
+        );
       }
     }
 
@@ -180,7 +187,10 @@ export class ProviderRegistry {
    * @param preferredId - Optional preferred provider ID
    * @returns News items
    */
-  async fetchTopNews(limit?: number, preferredId?: string): Promise<NewsItem[]> {
+  async fetchTopNews(
+    limit?: number,
+    preferredId?: string,
+  ): Promise<NewsItem[]> {
     const providers = this.getProviderOrder(preferredId).filter(
       (p) => p.fetchTopNews !== undefined,
     );

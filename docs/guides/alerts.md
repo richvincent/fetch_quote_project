@@ -1,6 +1,7 @@
 # Alerts Guide
 
-fetch_quote includes a powerful alert system to notify you when stocks reach certain conditions.
+fetch_quote includes a powerful alert system to notify you when stocks reach
+certain conditions.
 
 ## Quick Start
 
@@ -73,22 +74,25 @@ Alerts are displayed in the terminal with a bell sound.
 [NTFY](https://ntfy.sh) is an open-source push notification service.
 
 **Configuration:**
+
 ```yaml
 alerts:
   notifiers:
     ntfy:
-      server: https://ntfy.sh  # or self-hosted
+      server: https://ntfy.sh # or self-hosted
       topic: my-stock-alerts
       priority: high
 ```
 
 **Receive notifications:**
+
 - Subscribe to your topic in the NTFY app
 - Get push notifications on phone/desktop
 
 ### Webhook (Slack, Discord, etc.)
 
 **Slack:**
+
 ```yaml
 alerts:
   notifiers:
@@ -97,6 +101,7 @@ alerts:
 ```
 
 **Discord:**
+
 ```yaml
 alerts:
   notifiers:
@@ -113,6 +118,7 @@ alerts:
 ```
 
 Works on:
+
 - macOS (using osascript)
 - Linux (using notify-send)
 
@@ -145,15 +151,16 @@ Works on:
 alerts:
   enabled: true
   file: ~/.fetch_quote/alerts.json
-  checkInterval: 300    # Check every 5 minutes
-  defaultCooldown: 60   # Don't repeat for 60 minutes
+  checkInterval: 300 # Check every 5 minutes
+  defaultCooldown: 60 # Don't repeat for 60 minutes
   notifiers:
     console: true
 ```
 
 ### Cooldown
 
-Alerts have a cooldown period to prevent spam. After triggering, an alert won't trigger again for the cooldown duration.
+Alerts have a cooldown period to prevent spam. After triggering, an alert won't
+trigger again for the cooldown duration.
 
 ```bash
 # Set 30-minute cooldown
@@ -194,6 +201,7 @@ WantedBy=default.target
 ```
 
 Enable and start:
+
 ```bash
 systemctl --user enable fetch-quote-alerts
 systemctl --user start fetch-quote-alerts

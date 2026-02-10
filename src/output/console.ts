@@ -3,18 +3,10 @@
  * @module output/console
  */
 
-import * as colors from "https://deno.land/std@0.224.0/fmt/colors.ts";
-import type {
-  NewsItem,
-  PortfolioSummary,
-  Alert,
-} from "../core/types.ts";
-import { fmtMoney, fmtInt, fmtPercent } from "../utils/format.ts";
-import type {
-  OutputFormatter,
-  TickerResult,
-  BatchResult,
-} from "./types.ts";
+import * as colors from "@std/fmt/colors";
+import type { Alert, NewsItem, PortfolioSummary } from "../core/types.ts";
+import { fmtInt, fmtMoney, fmtPercent } from "../utils/format.ts";
+import type { BatchResult, OutputFormatter, TickerResult } from "./types.ts";
 
 /**
  * Console output formatter with color support.
@@ -44,7 +36,9 @@ export class ConsoleOutputFormatter implements OutputFormatter {
 
     // Price line
     const priceStr = fmtMoney(quote.price);
-    const changeStr = `${quote.change >= 0 ? "+" : ""}${fmtMoney(quote.change)}`;
+    const changeStr = `${quote.change >= 0 ? "+" : ""}${
+      fmtMoney(quote.change)
+    }`;
     const pctStr = fmtPercent(quote.changePercent);
     const priceDisplay = `${priceStr} ${changeStr} (${pctStr})`;
     const coloredPrice = this.colorValue(priceDisplay, quote.change);
@@ -56,10 +50,14 @@ export class ConsoleOutputFormatter implements OutputFormatter {
     // 52-week high and zones
     console.log(`52w High (adj): ${fmtMoney(metrics.high52Week)}`);
     console.log(
-      `Buy Zone: ${fmtMoney(zones.buyZoneLow)} .. ${fmtMoney(zones.buyZoneHigh)} (${((1 - zones.buyZoneLow / metrics.high52Week) * 100).toFixed(1)}%)`,
+      `Buy Zone: ${fmtMoney(zones.buyZoneLow)} .. ${
+        fmtMoney(zones.buyZoneHigh)
+      } (${((1 - zones.buyZoneLow / metrics.high52Week) * 100).toFixed(1)}%)`,
     );
     console.log(
-      `Sell if < ${fmtMoney(zones.sellThreshold)} (${((1 - zones.sellThreshold / metrics.high52Week) * 100).toFixed(1)}%)`,
+      `Sell if < ${fmtMoney(zones.sellThreshold)} (${
+        ((1 - zones.sellThreshold / metrics.high52Week) * 100).toFixed(1)
+      }%)`,
     );
 
     // Signal
@@ -73,7 +71,9 @@ export class ConsoleOutputFormatter implements OutputFormatter {
     const volDiffStr = fmtPercent(volumeVsAvg);
     const coloredVolDiff = this.colorValue(volDiffStr, volumeVsAvg);
     console.log(
-      `Vol: ${fmtInt(quote.volume)} vs 30d avg ${fmtInt(metrics.avgVolume30Day)} (${coloredVolDiff})`,
+      `Vol: ${fmtInt(quote.volume)} vs 30d avg ${
+        fmtInt(metrics.avgVolume30Day)
+      } (${coloredVolDiff})`,
     );
 
     // Indicators
@@ -81,30 +81,40 @@ export class ConsoleOutputFormatter implements OutputFormatter {
       console.log(colors.bold("\nTechnical Indicators:"));
       if (result.indicators.rsi) {
         const rsi = result.indicators.rsi;
-        const rsiColor =
-          rsi.interpretation === "overbought"
-            ? colors.red
-            : rsi.interpretation === "oversold"
-              ? colors.green
-              : colors.gray;
-        console.log(`  RSI(${rsi.period}): ${rsiColor(rsi.value.toFixed(1))} (${rsi.interpretation})`);
+        const rsiColor = rsi.interpretation === "overbought"
+          ? colors.red
+          : rsi.interpretation === "oversold"
+          ? colors.green
+          : colors.gray;
+        console.log(
+          `  RSI(${rsi.period}): ${
+            rsiColor(rsi.value.toFixed(1))
+          } (${rsi.interpretation})`,
+        );
       }
       if (result.indicators.sma) {
         for (const sma of result.indicators.sma) {
-          const relation = sma.priceRelation === "above" ? colors.green("above") : colors.red("below");
-          console.log(`  SMA(${sma.period}): ${fmtMoney(sma.value)} (price ${relation})`);
+          const relation = sma.priceRelation === "above"
+            ? colors.green("above")
+            : colors.red("below");
+          console.log(
+            `  SMA(${sma.period}): ${fmtMoney(sma.value)} (price ${relation})`,
+          );
         }
       }
       if (result.indicators.macd) {
         const macd = result.indicators.macd;
-        const trendColor =
-          macd.trend === "bullish"
-            ? colors.green
-            : macd.trend === "bearish"
-              ? colors.red
-              : colors.gray;
+        const trendColor = macd.trend === "bullish"
+          ? colors.green
+          : macd.trend === "bearish"
+          ? colors.red
+          : colors.gray;
         console.log(
-          `  MACD: ${macd.macdLine.toFixed(2)} / ${macd.signalLine.toFixed(2)} / ${macd.histogram >= 0 ? "+" : ""}${macd.histogram.toFixed(2)} (${trendColor(macd.trend)})`,
+          `  MACD: ${macd.macdLine.toFixed(2)} / ${
+            macd.signalLine.toFixed(2)
+          } / ${macd.histogram >= 0 ? "+" : ""}${macd.histogram.toFixed(2)} (${
+            trendColor(macd.trend)
+          })`,
         );
       }
     }
@@ -141,12 +151,16 @@ export class ConsoleOutputFormatter implements OutputFormatter {
 
     for (const item of news) {
       const when = item.publishedAt.toISOString().replace(".000", "");
-      console.log(`- ${item.title} ${colors.gray(when)} ${colors.gray(item.url)}`);
+      console.log(
+        `- ${item.title} ${colors.gray(when)} ${colors.gray(item.url)}`,
+      );
     }
   }
 
   formatPortfolio(summary: PortfolioSummary): void {
-    console.log(colors.bold(`\nPortfolio Summary (as of ${new Date().toISOString()})`));
+    console.log(
+      colors.bold(`\nPortfolio Summary (as of ${new Date().toISOString()})`),
+    );
     console.log("━".repeat(65));
 
     // Header
@@ -159,7 +173,9 @@ export class ConsoleOutputFormatter implements OutputFormatter {
 
     // Positions
     for (const pos of summary.positions) {
-      const gainStr = `${pos.gainLoss >= 0 ? "+" : ""}${fmtMoney(pos.gainLoss)} (${fmtPercent(pos.gainLossPercent)})`;
+      const gainStr = `${pos.gainLoss >= 0 ? "+" : ""}${
+        fmtMoney(pos.gainLoss)
+      } (${fmtPercent(pos.gainLossPercent)})`;
       const coloredGain = this.colorValue(gainStr, pos.gainLoss);
 
       console.log(
@@ -172,14 +188,20 @@ export class ConsoleOutputFormatter implements OutputFormatter {
 
     // Total
     console.log("─".repeat(65));
-    const totalGainStr = `${summary.totalGainLoss >= 0 ? "+" : ""}${fmtMoney(summary.totalGainLoss)} (${fmtPercent(summary.totalGainLossPercent)})`;
+    const totalGainStr = `${summary.totalGainLoss >= 0 ? "+" : ""}${
+      fmtMoney(summary.totalGainLoss)
+    } (${fmtPercent(summary.totalGainLossPercent)})`;
     const coloredTotal = this.colorValue(totalGainStr, summary.totalGainLoss);
     console.log(
-      `${"Total".padEnd(28)}${fmtMoney(summary.totalValue).padStart(10)}   ${coloredTotal}`,
+      `${"Total".padEnd(28)}${
+        fmtMoney(summary.totalValue).padStart(10)
+      }   ${coloredTotal}`,
     );
 
     // Day change
-    const dayStr = `${summary.dayChange >= 0 ? "+" : ""}${fmtMoney(summary.dayChange)} (${fmtPercent(summary.dayChangePercent)})`;
+    const dayStr = `${summary.dayChange >= 0 ? "+" : ""}${
+      fmtMoney(summary.dayChange)
+    } (${fmtPercent(summary.dayChangePercent)})`;
     const coloredDay = this.colorValue(dayStr, summary.dayChange);
     console.log(`Day Change: ${coloredDay}`);
   }
@@ -194,7 +216,9 @@ export class ConsoleOutputFormatter implements OutputFormatter {
   }
 
   formatError(symbol: string, error: Error): void {
-    console.error(colors.red(`✗ Failed to process ${symbol}: ${error.message}`));
+    console.error(
+      colors.red(`✗ Failed to process ${symbol}: ${error.message}`),
+    );
     if (error.message.includes("429") || error.message.includes("limit")) {
       console.error(
         colors.yellow("  Tip: Consider using --cache-dir to reduce API calls"),

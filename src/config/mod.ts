@@ -6,9 +6,9 @@
 export * from "./types.ts";
 export { DEFAULT_CONFIG, generateSampleConfig } from "./defaults.ts";
 export {
-  loadConfig,
-  initConfig,
   formatConfig,
-  validateConfig,
+  initConfig,
+  loadConfig,
   type LoadConfigResult,
+  validateConfig,
 } from "./loader.ts";

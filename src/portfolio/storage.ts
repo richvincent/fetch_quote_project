@@ -3,7 +3,11 @@
  * @module portfolio/storage
  */
 
-import type { Portfolio, Position, PortfolioTransaction } from "../core/types.ts";
+import type {
+  Portfolio,
+  PortfolioTransaction,
+  Position,
+} from "../core/types.ts";
 import { expandPath } from "../utils/format.ts";
 
 /**

@@ -5,9 +5,9 @@
 
 import type {
   Portfolio,
+  PortfolioSummary,
   Position,
   PositionWithQuote,
-  PortfolioSummary,
   Quote,
 } from "../core/types.ts";
 

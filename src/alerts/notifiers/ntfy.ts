@@ -59,7 +59,9 @@ export async function notifyNtfy(
   });
 
   if (!response.ok) {
-    throw new Error(`NTFY notification failed: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `NTFY notification failed: ${response.status} ${response.statusText}`,
+    );
   }
 }
 
@@ -76,11 +78,12 @@ export function createNtfyNotifier(
     return null;
   }
 
-  return (event) => notifyNtfy(event, {
-    server: config.server,
-    topic: config.topic,
-    priority: config.priority as NtfyConfig["priority"],
-  });
+  return (event) =>
+    notifyNtfy(event, {
+      server: config.server,
+      topic: config.topic,
+      priority: config.priority as NtfyConfig["priority"],
+    });
 }
 
 /**

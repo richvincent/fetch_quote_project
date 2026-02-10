@@ -4,30 +4,30 @@
  */
 
 export {
-  createEmptyPortfolio,
-  loadPortfolio,
-  savePortfolio,
   addPosition,
-  removePosition,
+  createEmptyPortfolio,
   getPosition,
   getTransactions,
   listSymbols,
+  loadPortfolio,
+  removePosition,
+  savePortfolio,
 } from "./storage.ts";
 
 export {
-  calculatePositionValue,
-  calculatePortfolioSummary,
   calculateAllocation,
-  findTopPerformers,
+  calculatePortfolioSummary,
+  calculatePositionValue,
   calculateRealizedGains,
   calculateUnrealizedGains,
+  findTopPerformers,
 } from "./calculator.ts";
 
 // Re-export types from core
 export type {
   Portfolio,
-  Position,
-  PortfolioTransaction,
-  PositionWithQuote,
   PortfolioSummary,
+  PortfolioTransaction,
+  Position,
+  PositionWithQuote,
 } from "../core/types.ts";

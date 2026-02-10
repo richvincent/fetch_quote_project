@@ -1,6 +1,7 @@
 # Architecture Overview
 
-fetch_quote is built with a modular architecture designed for extensibility, testability, and maintainability.
+fetch_quote is built with a modular architecture designed for extensibility,
+testability, and maintainability.
 
 ## High-Level Architecture
 

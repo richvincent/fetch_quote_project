@@ -2,13 +2,13 @@
  * @fileoverview Unit tests for analysis utilities.
  */
 
-import { assertEquals, assertAlmostEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import {
-  computeMetrics,
   calculateZones,
+  computeMetrics,
   determineSignal,
-  volumeComparison,
   extractPriceHistory,
+  volumeComparison,
 } from "../../../src/utils/analysis.ts";
 import { createMockDailyBars } from "../../test_utils.ts";
 
@@ -24,8 +24,8 @@ Deno.test("computeMetrics calculates 30-day average volume", () => {
   const bars = createMockDailyBars(5);
   const metrics = computeMetrics(bars);
 
-  const expectedAvg =
-    bars.slice(0, 5).reduce((sum, b) => sum + b.volume, 0) / 5;
+  const expectedAvg = bars.slice(0, 5).reduce((sum, b) => sum + b.volume, 0) /
+    5;
 
   // Allow some tolerance due to random volume generation
   assertAlmostEquals(metrics.avgVolume30Day, expectedAvg, 1);

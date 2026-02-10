@@ -4,15 +4,14 @@
  */
 
 import type {
-  Quote,
-  DailyBar,
-  NewsItem,
+  Alert,
+  IndicatorOutput,
   Metrics,
+  NewsItem,
+  PortfolioSummary,
+  Quote,
   Signal,
   TradingZones,
-  IndicatorOutput,
-  PortfolioSummary,
-  Alert,
 } from "../core/types.ts";
 
 /**

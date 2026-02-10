@@ -30,7 +30,8 @@ function calculateEMA(values: number[], period: number): number[] {
 
   // Calculate remaining EMAs
   for (let i = period; i < values.length; i++) {
-    const newEma = (values[i] - ema[ema.length - 1]) * multiplier + ema[ema.length - 1];
+    const newEma = (values[i] - ema[ema.length - 1]) * multiplier +
+      ema[ema.length - 1];
     ema.push(newEma);
   }
 
@@ -91,10 +92,9 @@ export function calculateMACD(
   const currentHistogram = currentMACD - currentSignal;
 
   // Get previous values for trend detection
-  const prevHistogram =
-    macdLine.length > 1 && signalLine.length > 1
-      ? macdLine[macdLine.length - 2] - signalLine[signalLine.length - 2]
-      : 0;
+  const prevHistogram = macdLine.length > 1 && signalLine.length > 1
+    ? macdLine[macdLine.length - 2] - signalLine[signalLine.length - 2]
+    : 0;
 
   // Determine trend
   let trend: MACDResult["trend"];
@@ -106,10 +106,12 @@ export function calculateMACD(
     trend = "neutral";
   }
 
+  const roundedMACD = Math.round(currentMACD * 100) / 100;
+  const roundedSignal = Math.round(currentSignal * 100) / 100;
   return {
-    macdLine: Math.round(currentMACD * 100) / 100,
-    signalLine: Math.round(currentSignal * 100) / 100,
-    histogram: Math.round(currentHistogram * 100) / 100,
+    macdLine: roundedMACD,
+    signalLine: roundedSignal,
+    histogram: Math.round((roundedMACD - roundedSignal) * 100) / 100,
     trend,
   };
 }

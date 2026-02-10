@@ -11,6 +11,7 @@ This guide covers the essential commands to get started with fetch_quote.
 ```
 
 Output:
+
 ```
 AAPL (Apple Inc.)
   Price: $185.50 (+1.25, +0.68%)
@@ -44,6 +45,7 @@ AAPL (Apple Inc.)
 ```
 
 Output includes:
+
 - RSI (Relative Strength Index)
 - SMA (Simple Moving Average) - 50 and 200 day
 - MACD (Moving Average Convergence Divergence)
@@ -131,5 +133,6 @@ With custom interval (in seconds):
 ## Next Steps
 
 - [Configuration](configuration.md) - Customize default settings
-- [Technical Analysis Guide](../guides/technical-analysis.md) - Deep dive into indicators
+- [Technical Analysis Guide](../guides/technical-analysis.md) - Deep dive into
+  indicators
 - [Portfolio Tracking](../guides/portfolio-tracking.md) - Track your investments

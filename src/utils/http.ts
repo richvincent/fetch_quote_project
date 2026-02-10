@@ -47,8 +47,14 @@ function sleep(ms: number): Promise<void> {
  * @param o - Backoff options
  * @returns Delay in milliseconds
  */
-export function computeDelay(attempt: number, o: Required<BackoffOpts>): number {
-  const base = Math.min(o.maxDelayMs, o.baseDelayMs * Math.pow(o.factor, attempt));
+export function computeDelay(
+  attempt: number,
+  o: Required<BackoffOpts>,
+): number {
+  const base = Math.min(
+    o.maxDelayMs,
+    o.baseDelayMs * Math.pow(o.factor, attempt),
+  );
   const jitter = Math.floor(Math.random() * (o.jitterMs + 1));
   return base + jitter;
 }
@@ -64,7 +70,8 @@ export function isAVSoftLimit(obj: unknown): obj is AVErrorResponse {
   const note = errResp.Note ?? errResp.Information;
   if (typeof note !== "string") return false;
   const s = note.toLowerCase();
-  return s.includes("frequency") || s.includes("limit") || s.includes("please consider");
+  return s.includes("frequency") || s.includes("limit") ||
+    s.includes("please consider");
 }
 
 /**
@@ -102,7 +109,9 @@ export async function fetchJsonWithBackoff<T = unknown>(
       try {
         data = text ? JSON.parse(text) : ({} as unknown as T);
       } catch {
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+        }
         return text as unknown as T;
       }
 
@@ -119,7 +128,11 @@ export async function fetchJsonWithBackoff<T = unknown>(
     } catch (err) {
       lastErr = err;
       const d = computeDelay(attempt, o);
-      onRetry?.({ attempt, delayMs: d, reason: (err as Error).message || "network error" });
+      onRetry?.({
+        attempt,
+        delayMs: d,
+        reason: (err as Error).message || "network error",
+      });
       await sleep(d);
     }
   }
@@ -138,7 +151,10 @@ export async function fetchJsonWithBackoff<T = unknown>(
  */
 export async function cachedFetchJson<T = unknown>(
   url: string,
-  cache: { get: (k: string) => Promise<{ data: T } | null>; set: (k: string, d: T, t: number) => Promise<void> } | null,
+  cache: {
+    get: (k: string) => Promise<{ data: T } | null>;
+    set: (k: string, d: T, t: number) => Promise<void>;
+  } | null,
   ttlMs: number,
   backoff?: BackoffOpts,
   onRetry?: (info: RetryInfo) => void,

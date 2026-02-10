@@ -1,10 +1,12 @@
 # Configuration
 
-fetch_quote supports configuration through YAML files, environment variables, and CLI arguments.
+fetch_quote supports configuration through YAML files, environment variables,
+and CLI arguments.
 
 ## Configuration Priority
 
 Settings are applied in this order (highest priority first):
+
 1. CLI arguments
 2. Environment variables
 3. Configuration file
@@ -15,6 +17,7 @@ Settings are applied in this order (highest priority first):
 ### Location
 
 fetch_quote looks for configuration files in this order:
+
 1. `~/.fetch_quote.yaml`
 2. `~/.fetch_quote.yml`
 3. `~/.config/fetch_quote/config.yaml`
@@ -50,9 +53,9 @@ cache:
   enabled: true
   directory: ~/.cache/fetch_quote
   ttl:
-    quote: 60        # seconds
-    daily: 21600     # 6 hours
-    news: 600        # 10 minutes
+    quote: 60 # seconds
+    daily: 21600 # 6 hours
+    news: 600 # 10 minutes
 
 # Display settings
 display:
@@ -87,8 +90,8 @@ portfolio:
 alerts:
   enabled: false
   file: ~/.fetch_quote/alerts.json
-  checkInterval: 300    # 5 minutes
-  defaultCooldown: 60   # minutes
+  checkInterval: 300 # 5 minutes
+  defaultCooldown: 60 # minutes
   notifiers:
     console: true
     # ntfy:
@@ -176,62 +179,62 @@ credentials:
 
 API credentials for data providers.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `alphaVantage.apiKey` | string | Alpha Vantage API key |
+| Field                  | Type   | Description                     |
+| ---------------------- | ------ | ------------------------------- |
+| `alphaVantage.apiKey`  | string | Alpha Vantage API key           |
 | `alphaVantage.keyFile` | string | Path to file containing API key |
-| `finnhub.apiKey` | string | Finnhub API key |
+| `finnhub.apiKey`       | string | Finnhub API key                 |
 
 ### provider
 
 Data provider selection.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `default` | string | `alpha_vantage` | Primary provider |
-| `fallback` | string | `finnhub` | Fallback provider |
+| Field      | Type   | Default         | Description       |
+| ---------- | ------ | --------------- | ----------------- |
+| `default`  | string | `alpha_vantage` | Primary provider  |
+| `fallback` | string | `finnhub`       | Fallback provider |
 
 ### cache
 
 Caching settings for API responses.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable response caching |
-| `directory` | string | - | Cache directory path |
-| `ttl.quote` | number | `60` | Quote cache TTL (seconds) |
-| `ttl.daily` | number | `21600` | Daily data TTL (6 hours) |
-| `ttl.news` | number | `600` | News TTL (10 minutes) |
+| Field       | Type    | Default | Description               |
+| ----------- | ------- | ------- | ------------------------- |
+| `enabled`   | boolean | `false` | Enable response caching   |
+| `directory` | string  | -       | Cache directory path      |
+| `ttl.quote` | number  | `60`    | Quote cache TTL (seconds) |
+| `ttl.daily` | number  | `21600` | Daily data TTL (6 hours)  |
+| `ttl.news`  | number  | `600`   | News TTL (10 minutes)     |
 
 ### trading
 
 Buy/sell analysis parameters.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `buyPct` | number | `7` | % below 52-week high for buy zone |
-| `sellPct` | number | `8` | % below 52-week high for sell signal |
+| Field     | Type   | Default | Description                          |
+| --------- | ------ | ------- | ------------------------------------ |
+| `buyPct`  | number | `7`     | % below 52-week high for buy zone    |
+| `sellPct` | number | `8`     | % below 52-week high for sell signal |
 
 ### indicators
 
 Technical indicator parameters.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sma.periods` | number[] | `[50, 200]` | SMA periods |
-| `rsi.period` | number | `14` | RSI period |
-| `rsi.overbought` | number | `70` | RSI overbought threshold |
-| `rsi.oversold` | number | `30` | RSI oversold threshold |
-| `macd.fast` | number | `12` | MACD fast EMA period |
-| `macd.slow` | number | `26` | MACD slow EMA period |
-| `macd.signal` | number | `9` | MACD signal line period |
+| Field            | Type     | Default     | Description              |
+| ---------------- | -------- | ----------- | ------------------------ |
+| `sma.periods`    | number[] | `[50, 200]` | SMA periods              |
+| `rsi.period`     | number   | `14`        | RSI period               |
+| `rsi.overbought` | number   | `70`        | RSI overbought threshold |
+| `rsi.oversold`   | number   | `30`        | RSI oversold threshold   |
+| `macd.fast`      | number   | `12`        | MACD fast EMA period     |
+| `macd.slow`      | number   | `26`        | MACD slow EMA period     |
+| `macd.signal`    | number   | `9`         | MACD signal line period  |
 
 ### watch
 
 Watch mode settings.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `interval` | number | `60` | Update interval (seconds) |
-| `clearScreen` | boolean | `true` | Clear screen between updates |
-| `sound` | boolean | `false` | Play sound on significant changes |
+| Field         | Type    | Default | Description                       |
+| ------------- | ------- | ------- | --------------------------------- |
+| `interval`    | number  | `60`    | Update interval (seconds)         |
+| `clearScreen` | boolean | `true`  | Clear screen between updates      |
+| `sound`       | boolean | `false` | Play sound on significant changes |

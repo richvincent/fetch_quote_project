@@ -36,9 +36,16 @@ const args = parse(Deno.args, {
 });
 
 const buyPct = Number(args["buy-pct"] ?? args.buyPct ?? CONFIG.DEFAULT_BUY_PCT);
-const sellPct = Number(args["sell-pct"] ?? args.sellPct ?? CONFIG.DEFAULT_SELL_PCT);
-const concurrency = Math.max(1, Number(args.concurrency ?? CONFIG.DEFAULT_CONCURRENCY));
-const cacheDir = typeof args["cache-dir"] === "string" ? args["cache-dir"] : undefined;
+const sellPct = Number(
+  args["sell-pct"] ?? args.sellPct ?? CONFIG.DEFAULT_SELL_PCT,
+);
+const concurrency = Math.max(
+  1,
+  Number(args.concurrency ?? CONFIG.DEFAULT_CONCURRENCY),
+);
+const cacheDir = typeof args["cache-dir"] === "string"
+  ? args["cache-dir"]
+  : undefined;
 
 let tickers: string[] = [];
 if (args.ticker) tickers = String(args.ticker).split(",").map((s) => s.trim());
@@ -80,8 +87,12 @@ if (!API_KEY) {
   console.error("\nTo fix this, choose one option:");
   console.error(colors.gray("  Option 1 - Environment variable:"));
   console.error(colors.gray("    export ALPHA_VANTAGE_API_KEY=YOUR_KEY"));
-  console.error(colors.gray("  Option 2 - Save to alpha_vantage_api_key.txt file"));
-  console.error(colors.gray("\nGet a free API key at https://www.alphavantage.co"));
+  console.error(
+    colors.gray("  Option 2 - Save to alpha_vantage_api_key.txt file"),
+  );
+  console.error(
+    colors.gray("\nGet a free API key at https://www.alphavantage.co"),
+  );
   Deno.exit(1);
 }
 
@@ -112,7 +123,10 @@ function sleep(ms: number) {
  * @returns Delay in milliseconds before next retry
  */
 function computeDelay(attempt: number, o: Required<BackoffOpts>): number {
-  const base = Math.min(o.maxDelayMs, o.baseDelayMs * Math.pow(o.factor, attempt));
+  const base = Math.min(
+    o.maxDelayMs,
+    o.baseDelayMs * Math.pow(o.factor, attempt),
+  );
   const jitter = Math.floor(Math.random() * (o.jitterMs + 1));
   return base + jitter;
 }
@@ -128,7 +142,8 @@ function isAVSoftLimit(obj: unknown): obj is AVErrorResponse {
   const note = errResp.Note ?? errResp.Information;
   if (typeof note !== "string") return false;
   const s = note.toLowerCase();
-  return s.includes("frequency") || s.includes("limit") || s.includes("please consider");
+  return s.includes("frequency") || s.includes("limit") ||
+    s.includes("please consider");
 }
 
 /**
@@ -142,7 +157,9 @@ function isAVSoftLimit(obj: unknown): obj is AVErrorResponse {
 async function fetchJsonWithBackoff<T = unknown>(
   url: string,
   backoff: BackoffOpts = {},
-  onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
+  onRetry?: (
+    info: { attempt: number; delayMs: number; reason: string },
+  ) => void,
 ): Promise<T> {
   const o = { ...DEFAULT_BACKOFF, ...backoff };
   let lastErr: unknown = undefined;
@@ -163,7 +180,9 @@ async function fetchJsonWithBackoff<T = unknown>(
       try {
         data = text ? JSON.parse(text) : ({} as unknown as T);
       } catch {
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${text || "<empty>"}`);
+        }
         return text as unknown as T;
       }
 
@@ -179,7 +198,11 @@ async function fetchJsonWithBackoff<T = unknown>(
     } catch (err) {
       lastErr = err;
       const d = computeDelay(attempt, o);
-      onRetry?.({ attempt, delayMs: d, reason: (err as Error).message || "network error" });
+      onRetry?.({
+        attempt,
+        delayMs: d,
+        reason: (err as Error).message || "network error",
+      });
       await sleep(d);
     }
   }
@@ -211,7 +234,9 @@ async function cachedFetchJson<T = unknown>(
   url: string,
   opts: { cacheDir?: string; ttlSec?: number } = {},
   backoff?: BackoffOpts,
-  onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void,
+  onRetry?: (
+    info: { attempt: number; delayMs: number; reason: string },
+  ) => void,
 ): Promise<T> {
   const { cacheDir, ttlSec = 3600 } = opts;
   if (!cacheDir) return fetchJsonWithBackoff<T>(url, backoff, onRetry);
@@ -221,8 +246,16 @@ async function cachedFetchJson<T = unknown>(
     await ensureDir(cacheDir);
   } catch (err) {
     if (err instanceof Deno.errors.PermissionDenied) {
-      console.error(colors.yellow("⚠ Cache disabled: missing --allow-read/--allow-write permissions"));
-      console.error(colors.gray("  Run with: deno run --allow-net --allow-env --allow-read --allow-write fetch_quote.ts"));
+      console.error(
+        colors.yellow(
+          "⚠ Cache disabled: missing --allow-read/--allow-write permissions",
+        ),
+      );
+      console.error(
+        colors.gray(
+          "  Run with: deno run --allow-net --allow-env --allow-read --allow-write fetch_quote.ts",
+        ),
+      );
       canCache = false;
     } else throw err;
   }
@@ -256,7 +289,11 @@ async function cachedFetchJson<T = unknown>(
  * @param fn - Async function to apply to each item
  * @returns Promise resolving to array of results in original order
  */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: number) => Promise<R>): Promise<R[]> {
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (x: T, i: number) => Promise<R>,
+): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let i = 0, active = 0;
   return await new Promise<R[]>((resolve, reject) => {
@@ -268,7 +305,10 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: number) =
         Promise.resolve(fn(items[idx], idx))
           .then((val) => results[idx] = val)
           .catch(reject)
-          .finally(() => { active--; next(); });
+          .finally(() => {
+            active--;
+            next();
+          });
       }
     };
     next();
@@ -279,7 +319,8 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: number) =
 function validateTicker(s: string): boolean {
   // Must start with letter, allow letters, digits, dots, dashes, and optional "EXCH:SYM"
   // Examples: AAPL, BRK.B, TSX:RY, NYSE:BRK-A
-  return /^[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*(?::[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*)?$/.test(s);
+  return /^[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*(?::[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*)?$/
+    .test(s);
 }
 function fmtMoney(n: number): string {
   if (!Number.isFinite(n)) return "—";
@@ -359,7 +400,12 @@ function av(params: Record<string, string>) {
  */
 async function fetchGlobalQuote(symbol: string): Promise<GlobalQuote> {
   const url = av({ function: "GLOBAL_QUOTE", symbol });
-  const data = await cachedFetchJson<GlobalQuoteResp>(url, { cacheDir, ttlSec: CONFIG.DEFAULT_QUOTE_CACHE_TTL_SEC }, {}, logRetry);
+  const data = await cachedFetchJson<GlobalQuoteResp>(
+    url,
+    { cacheDir, ttlSec: CONFIG.DEFAULT_QUOTE_CACHE_TTL_SEC },
+    {},
+    logRetry,
+  );
   return data?.["Global Quote"] ?? {};
 }
 
@@ -369,8 +415,17 @@ async function fetchGlobalQuote(symbol: string): Promise<GlobalQuote> {
  * @returns Daily time series with split/dividend adjustments
  */
 async function fetchDailyAdjusted(symbol: string): Promise<DailyResp> {
-  const url = av({ function: "TIME_SERIES_DAILY_ADJUSTED", symbol, outputsize: "full" });
-  return await cachedFetchJson<DailyResp>(url, { cacheDir, ttlSec: CONFIG.DEFAULT_DAILY_CACHE_TTL_SEC }, {}, logRetry);
+  const url = av({
+    function: "TIME_SERIES_DAILY_ADJUSTED",
+    symbol,
+    outputsize: "full",
+  });
+  return await cachedFetchJson<DailyResp>(
+    url,
+    { cacheDir, ttlSec: CONFIG.DEFAULT_DAILY_CACHE_TTL_SEC },
+    {},
+    logRetry,
+  );
 }
 
 /**
@@ -380,7 +435,11 @@ async function fetchDailyAdjusted(symbol: string): Promise<DailyResp> {
  * @param daysBack - Number of days to look back
  * @returns News sentiment response with article feed
  */
-async function fetchTickerNews(symbol: string, limit = CONFIG.NEWS_ITEM_LIMIT, daysBack = CONFIG.NEWS_DAYS_BACK): Promise<NewsResp> {
+async function fetchTickerNews(
+  symbol: string,
+  limit = CONFIG.NEWS_ITEM_LIMIT,
+  daysBack = CONFIG.NEWS_DAYS_BACK,
+): Promise<NewsResp> {
   const dt = new Date(Date.now() - daysBack * CONFIG.MS_PER_DAY);
   const iso = dt.toISOString().slice(0, 19) + "Z";
   const url = av({
@@ -390,7 +449,12 @@ async function fetchTickerNews(symbol: string, limit = CONFIG.NEWS_ITEM_LIMIT, d
     sort: "LATEST",
     time_from: iso,
   });
-  return await cachedFetchJson<NewsResp>(url, { cacheDir, ttlSec: CONFIG.DEFAULT_NEWS_CACHE_TTL_SEC }, {}, logRetry);
+  return await cachedFetchJson<NewsResp>(
+    url,
+    { cacheDir, ttlSec: CONFIG.DEFAULT_NEWS_CACHE_TTL_SEC },
+    {},
+    logRetry,
+  );
 }
 
 /**
@@ -399,7 +463,10 @@ async function fetchTickerNews(symbol: string, limit = CONFIG.NEWS_ITEM_LIMIT, d
  * @param daysBack - Number of days to look back
  * @returns News sentiment response with market headline feed
  */
-async function fetchTopNews(limit = CONFIG.TOP_NEWS_LIMIT, daysBack = CONFIG.TOP_NEWS_DAYS_BACK): Promise<NewsResp> {
+async function fetchTopNews(
+  limit = CONFIG.TOP_NEWS_LIMIT,
+  daysBack = CONFIG.TOP_NEWS_DAYS_BACK,
+): Promise<NewsResp> {
   const dt = new Date(Date.now() - daysBack * CONFIG.MS_PER_DAY);
   const iso = dt.toISOString().slice(0, 19) + "Z";
   const url = av({
@@ -409,11 +476,24 @@ async function fetchTopNews(limit = CONFIG.TOP_NEWS_LIMIT, daysBack = CONFIG.TOP
     sort: "LATEST",
     time_from: iso,
   });
-  return await cachedFetchJson<NewsResp>(url, { cacheDir, ttlSec: CONFIG.DEFAULT_NEWS_CACHE_TTL_SEC }, {}, logRetry);
+  return await cachedFetchJson<NewsResp>(
+    url,
+    { cacheDir, ttlSec: CONFIG.DEFAULT_NEWS_CACHE_TTL_SEC },
+    {},
+    logRetry,
+  );
 }
 
-function logRetry({ attempt, delayMs, reason }: { attempt: number; delayMs: number; reason: string }) {
-  console.error(colors.gray(`[retry #${attempt}] ${reason}; waiting ${delayMs}ms`));
+function logRetry(
+  { attempt, delayMs, reason }: {
+    attempt: number;
+    delayMs: number;
+    reason: string;
+  },
+) {
+  console.error(
+    colors.gray(`[retry #${attempt}] ${reason}; waiting ${delayMs}ms`),
+  );
 }
 
 // --------------------------- Core calcs ---------------------------
@@ -436,7 +516,10 @@ function computeMetrics(daily: DailyResp) {
     const hi = Number(r["2. high"]);
     const close = Number(r["4. close"]);
     const adjClose = Number(r["5. adjusted close"]);
-    const multiplier = (Number.isFinite(adjClose) && Number.isFinite(close) && close !== 0) ? adjClose / close : 1;
+    const multiplier =
+      (Number.isFinite(adjClose) && Number.isFinite(close) && close !== 0)
+        ? adjClose / close
+        : 1;
     const adjHigh = hi * multiplier;
     if (Number.isFinite(adjHigh)) high52 = Math.max(high52, adjHigh);
 
@@ -466,7 +549,10 @@ function detectTerminalCapability(): TerminalCapability {
   const colorterm = Deno.env.get("COLORTERM") || "";
 
   // Check for truecolor or 256 color support
-  if (colorterm === "truecolor" || term.includes("256color") || term.includes("xterm")) {
+  if (
+    colorterm === "truecolor" || term.includes("256color") ||
+    term.includes("xterm")
+  ) {
     return "enhanced";
   }
 
@@ -480,15 +566,19 @@ function detectTerminalCapability(): TerminalCapability {
  * @param days - Number of recent days to extract
  * @returns Array of {date, price} objects sorted chronologically
  */
-function extractPriceHistory(daily: DailyResp, days = 90): Array<{date: string, price: number}> {
+function extractPriceHistory(
+  daily: DailyResp,
+  days = 90,
+): Array<{ date: string; price: number }> {
   const rows = daily?.["Time Series (Daily)"] ?? {};
   const dates = Object.keys(rows).sort((a, b) => b.localeCompare(a)); // desc
   const recent = dates.slice(0, days).reverse(); // chronological order
 
-  return recent.map(date => ({
+  return recent.map((date) => ({
     date,
-    price: Number(rows[date]["5. adjusted close"]) || Number(rows[date]["4. close"])
-  })).filter(d => Number.isFinite(d.price));
+    price: Number(rows[date]["5. adjusted close"]) ||
+      Number(rows[date]["4. close"]),
+  })).filter((d) => Number.isFinite(d.price));
 }
 
 /**
@@ -498,13 +588,18 @@ function extractPriceHistory(daily: DailyResp, days = 90): Array<{date: string, 
  * @param high52 - 52-week high for reference
  * @param enhanced - Use enhanced colors for modern terminals
  */
-function renderAsciiChart(history: Array<{date: string, price: number}>, symbol: string, high52: number, enhanced: boolean) {
+function renderAsciiChart(
+  history: Array<{ date: string; price: number }>,
+  symbol: string,
+  high52: number,
+  enhanced: boolean,
+) {
   if (history.length === 0) {
     console.log(colors.gray("No chart data available"));
     return;
   }
 
-  const data = history.map(h => h.price);
+  const data = history.map((h) => h.price);
 
   // Get terminal size with fallback
   let termRows = 40; // default
@@ -520,10 +615,12 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
   const chart = asciichart.plot(data, {
     height,
     format: (x: number) => fmtMoney(x).padStart(10),
-    colors: enhanced ? [
-      asciichart.cyan,
-      asciichart.lightcyan
-    ] : undefined
+    colors: enhanced
+      ? [
+        asciichart.cyan,
+        asciichart.lightcyan,
+      ]
+      : undefined,
   });
 
   console.log(colors.bold(`\n${symbol} - ${data.length} Day Price Chart`));
@@ -538,7 +635,9 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
     ? colors.green("+" + change.toFixed(2) + "%")
     : colors.red(change.toFixed(2) + "%");
   console.log(colors.gray(
-    `Range: ${fmtMoney(min)} - ${fmtMoney(max)} | 52w High: ${fmtMoney(high52)} | Period: ${changeStr}`
+    `Range: ${fmtMoney(min)} - ${fmtMoney(max)} | 52w High: ${
+      fmtMoney(high52)
+    } | Period: ${changeStr}`,
   ));
   console.log();
 
@@ -551,9 +650,11 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
 
   // Add x-axis timeline
   // Strip ANSI codes to get actual character width
-  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-  const chartLines = chart.split('\n');
-  const actualChartWidth = chartLines[0] ? stripAnsi(chartLines[0]).length : 100;
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
+  const chartLines = chart.split("\n");
+  const actualChartWidth = chartLines[0]
+    ? stripAnsi(chartLines[0]).length
+    : 100;
   const yAxisWidth = 11; // Width of the y-axis labels (price format padding)
   const plotWidth = actualChartWidth - yAxisWidth;
 
@@ -570,7 +671,9 @@ function renderAsciiChart(history: Array<{date: string, price: number}>, symbol:
   const spacing = Math.floor(availableWidth / (numLabels - 1));
 
   for (let i = 0; i < numLabels; i++) {
-    const idx = i === numLabels - 1 ? history.length - 1 : Math.floor(i * (history.length - 1) / (numLabels - 1));
+    const idx = i === numLabels - 1
+      ? history.length - 1
+      : Math.floor(i * (history.length - 1) / (numLabels - 1));
     const dateStr = history[idx].date.slice(5); // MM-DD format
 
     if (i > 0) {
@@ -644,12 +747,15 @@ function printQuoteLine(q: GlobalQuote): void {
 
   const pStr = fmtMoney(price);
   const chStr = `${change >= 0 ? "+" : ""}${fmtMoney(change)}`;
-  const cpStr = Number.isFinite(cp) ? ` (${(cp * 100 >= 0 ? "+" : "")}${(cp * 100).toFixed(2)}%)` : "";
+  const cpStr = Number.isFinite(cp)
+    ? ` (${(cp * 100 >= 0 ? "+" : "")}${(cp * 100).toFixed(2)}%)`
+    : "";
 
-  const colored =
-    (change > 0 || cp > 0) ? colors.green(`${pStr} ${chStr}${cpStr}`) :
-      (change < 0 || cp < 0) ? colors.red(`${pStr} ${chStr}${cpStr}`) :
-        `${pStr} ${chStr}${cpStr}`;
+  const colored = (change > 0 || cp > 0)
+    ? colors.green(`${pStr} ${chStr}${cpStr}`)
+    : (change < 0 || cp < 0)
+    ? colors.red(`${pStr} ${chStr}${cpStr}`)
+    : `${pStr} ${chStr}${cpStr}`;
 
   console.log(`Price: ${colored} ${colors.gray(date ? `on ${date}` : "")}`);
 }
@@ -658,12 +764,23 @@ function printZones(high52: number, buyPct: number, sellPct: number): void {
   const buyLow = high52 * (1 - buyPct / 100);
   const sellThresh = high52 * (1 - sellPct / 100);
   console.log(`52w High (adj): ${fmtMoney(high52)}`);
-  console.log(`Buy Zone: ${fmtMoney(buyLow)} .. ${fmtMoney(high52)} (${(buyPct).toFixed(1)}%)`);
-  console.log(`Sell if < ${fmtMoney(sellThresh)} (${(sellPct).toFixed(1)}%)`);
+  console.log(
+    `Buy Zone: ${fmtMoney(buyLow)} .. ${fmtMoney(high52)} (${
+      buyPct.toFixed(1)
+    }%)`,
+  );
+  console.log(`Sell if < ${fmtMoney(sellThresh)} (${sellPct.toFixed(1)}%)`);
 }
 
-function printSignal(price: number, high52: number, buyPct: number, sellPct: number): void {
-  if (!Number.isFinite(price) || !Number.isFinite(high52) || high52 <= 0) return;
+function printSignal(
+  price: number,
+  high52: number,
+  buyPct: number,
+  sellPct: number,
+): void {
+  if (!Number.isFinite(price) || !Number.isFinite(high52) || high52 <= 0) {
+    return;
+  }
   const buyLow = high52 * (1 - buyPct / 100);
   const sellThresh = high52 * (1 - sellPct / 100);
 
@@ -676,14 +793,18 @@ function printSignal(price: number, high52: number, buyPct: number, sellPct: num
 }
 
 function printVolume(todayVol: number, avgVol30: number): void {
-  if (!Number.isFinite(todayVol) || !Number.isFinite(avgVol30) || avgVol30 === 0) {
+  if (
+    !Number.isFinite(todayVol) || !Number.isFinite(avgVol30) || avgVol30 === 0
+  ) {
     console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)}`);
     return;
   }
   const diff = (todayVol - avgVol30) / avgVol30;
   const diffStr = (diff >= 0 ? "+" : "") + (diff * 100).toFixed(1) + "%";
   const colored = diff >= 0 ? colors.green(diffStr) : colors.red(diffStr);
-  console.log(`Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)} (${colored})`);
+  console.log(
+    `Vol: ${fmtInt(todayVol)} vs 30d avg ${fmtInt(avgVol30)} (${colored})`,
+  );
 }
 
 function printTickerNews(n: NewsResp): void {
@@ -694,7 +815,11 @@ function printTickerNews(n: NewsResp): void {
   }
   for (const item of feed.slice(0, CONFIG.NEWS_ITEM_LIMIT)) {
     const when = parseNewsTime(item.time_published);
-    console.log(`- ${item.title || "Untitled"} ${colors.gray(when)} ${colors.gray(item.url || "")}`);
+    console.log(
+      `- ${item.title || "Untitled"} ${colors.gray(when)} ${
+        colors.gray(item.url || "")
+      }`,
+    );
   }
 }
 
@@ -762,7 +887,11 @@ async function main() {
       if (err instanceof Error) {
         console.error(colors.red(`✗ Failed to process ${t}: ${err.message}`));
         if (err.message.includes("429") || err.message.includes("limit")) {
-          console.error(colors.yellow("  Tip: Consider using --cache-dir to reduce API calls"));
+          console.error(
+            colors.yellow(
+              "  Tip: Consider using --cache-dir to reduce API calls",
+            ),
+          );
         }
       } else {
         console.error(colors.red(`✗ Failed to process ${t}: Unknown error`));

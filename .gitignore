@@ -5,6 +5,12 @@
 # Archive/legacy code
 archive/
 
+# Dependencies
+node_modules/
+
+# Assessments/reviews
+third_party_assessment_*.md
+
 # Cache directories
 .cache/
 cache/

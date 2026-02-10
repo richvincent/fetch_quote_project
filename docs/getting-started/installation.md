@@ -3,22 +3,26 @@
 ## Prerequisites
 
 - [Deno](https://deno.land/) v1.40 or later
-- An API key from [Alpha Vantage](https://www.alphavantage.co/support/#api-key) (free tier available)
+- An API key from [Alpha Vantage](https://www.alphavantage.co/support/#api-key)
+  (free tier available)
 - Optional: [Finnhub](https://finnhub.io/) API key for additional data source
 
 ## Installing Deno
 
 ### macOS
+
 ```bash
 brew install deno
 ```
 
 ### Linux
+
 ```bash
 curl -fsSL https://deno.land/install.sh | sh
 ```
 
 ### Windows
+
 ```powershell
 irm https://deno.land/install.ps1 | iex
 ```
@@ -66,6 +70,7 @@ chmod 600 ~/.config/fetch_quote/alpha_vantage.key
 ```
 
 Expected output:
+
 ```
 AAPL (Apple Inc.)
   Price: $185.50 (+1.25, +0.68%)
@@ -81,13 +86,18 @@ AAPL (Apple Inc.)
 ## Troubleshooting
 
 ### "API key not found"
+
 Ensure your API key is set correctly in environment or config file.
 
 ### "Rate limit exceeded"
-Alpha Vantage free tier allows 25 requests/day. Consider using Finnhub as fallback.
+
+Alpha Vantage free tier allows 25 requests/day. Consider using Finnhub as
+fallback.
 
 ### Permission denied
+
 Make the script executable:
+
 ```bash
 chmod +x fetch_quote.ts
 ```

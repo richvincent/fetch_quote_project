@@ -13,12 +13,12 @@
 import { VERSION } from "./core/constants.ts";
 
 // Placeholder main - will be populated as modules are extracted
-async function main(): Promise<void> {
+function main(): void {
   console.log(`fetch_quote v${VERSION}`);
   console.log("Modular version - under development");
   console.log("\nFor now, use the original: ./fetch_quote.ts");
 }
 
 if (import.meta.main) {
-  await main();
+  main();
 }

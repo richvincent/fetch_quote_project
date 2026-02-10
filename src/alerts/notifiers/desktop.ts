@@ -32,7 +32,9 @@ export async function notifyDesktop(event: AlertEvent): Promise<void> {
  * Sends notification on macOS using osascript.
  */
 async function notifyMacOS(title: string, message: string): Promise<void> {
-  const script = `display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}" sound name "Glass"`;
+  const script = `display notification "${
+    escapeAppleScript(message)
+  }" with title "${escapeAppleScript(title)}" sound name "Glass"`;
 
   const cmd = new Deno.Command("osascript", {
     args: ["-e", script],
@@ -50,8 +52,10 @@ async function notifyMacOS(title: string, message: string): Promise<void> {
 async function notifyLinux(title: string, message: string): Promise<void> {
   const cmd = new Deno.Command("notify-send", {
     args: [
-      "-u", "normal",
-      "-i", "stock",
+      "-u",
+      "normal",
+      "-i",
+      "stock",
       title,
       message,
     ],

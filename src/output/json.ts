@@ -3,16 +3,8 @@
  * @module output/json
  */
 
-import type {
-  NewsItem,
-  PortfolioSummary,
-  Alert,
-} from "../core/types.ts";
-import type {
-  OutputFormatter,
-  TickerResult,
-  BatchResult,
-} from "./types.ts";
+import type { Alert, NewsItem, PortfolioSummary } from "../core/types.ts";
+import type { BatchResult, OutputFormatter, TickerResult } from "./types.ts";
 
 /**
  * JSON output formatter.
@@ -183,7 +175,9 @@ export class JsonOutputFormatter implements OutputFormatter {
 
   end(): void {
     // If we accumulated results in batch mode, output them now
-    if (this.isBatchMode && (this.results.length > 0 || this.errors.length > 0)) {
+    if (
+      this.isBatchMode && (this.results.length > 0 || this.errors.length > 0)
+    ) {
       this.formatBatch({
         generatedAt: new Date().toISOString(),
         tickers: this.results,

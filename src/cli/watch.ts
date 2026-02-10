@@ -3,7 +3,7 @@
  * @module cli/watch
  */
 
-import type { Quote, DailyBar } from "../core/types.ts";
+import type { DailyBar, Quote } from "../core/types.ts";
 
 /**
  * Watch mode options.
@@ -69,7 +69,9 @@ export class WatchMode {
    */
   async start(
     symbols: string[],
-    fetchQuote: (symbol: string) => Promise<{ quote: Quote; bars?: DailyBar[] }>,
+    fetchQuote: (
+      symbol: string,
+    ) => Promise<{ quote: Quote; bars?: DailyBar[] }>,
     options: WatchOptions,
   ): Promise<void> {
     if (this.state.isRunning) {
@@ -122,7 +124,9 @@ export class WatchMode {
    */
   private async runUpdate(
     symbols: string[],
-    fetchQuote: (symbol: string) => Promise<{ quote: Quote; bars?: DailyBar[] }>,
+    fetchQuote: (
+      symbol: string,
+    ) => Promise<{ quote: Quote; bars?: DailyBar[] }>,
     options: WatchOptions,
   ): Promise<void> {
     if (options.clearScreen) {
@@ -169,7 +173,9 @@ export class WatchMode {
     // Play sound if enabled and significant change
     if (options.sound) {
       for (const result of results) {
-        if (result.priceChangePercent && Math.abs(result.priceChangePercent) >= 1) {
+        if (
+          result.priceChangePercent && Math.abs(result.priceChangePercent) >= 1
+        ) {
           this.playBeep();
           break;
         }
@@ -222,9 +228,7 @@ export function formatWatchHeader(
   lastUpdate: Date | null,
   interval: number,
 ): string {
-  const timeStr = lastUpdate
-    ? lastUpdate.toLocaleTimeString()
-    : "N/A";
+  const timeStr = lastUpdate ? lastUpdate.toLocaleTimeString() : "N/A";
 
   return `Watch Mode | Update #${updateCount} | Last: ${timeStr} | Interval: ${interval}s | Ctrl+C to exit`;
 }
@@ -247,7 +251,9 @@ export function formatWatchChange(
   const arrow = change > 0 ? "↑" : change < 0 ? "↓" : "→";
   const sign = change >= 0 ? "+" : "";
 
-  return `${arrow} ${sign}$${Math.abs(change).toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
+  return `${arrow} ${sign}$${Math.abs(change).toFixed(2)} (${sign}${
+    changePercent.toFixed(2)
+  }%)`;
 }
 
 /**
@@ -255,7 +261,10 @@ export function formatWatchChange(
  *
  * @returns Object with watch instance and abort controller
  */
-export function createWatchMode(): { watch: WatchMode; controller: AbortController } {
+export function createWatchMode(): {
+  watch: WatchMode;
+  controller: AbortController;
+} {
   const controller = new AbortController();
   const watch = new WatchMode();
 

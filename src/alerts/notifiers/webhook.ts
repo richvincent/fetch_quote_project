@@ -74,7 +74,9 @@ export async function notifyWebhook(
   });
 
   if (!response.ok) {
-    throw new Error(`Webhook notification failed: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Webhook notification failed: ${response.status} ${response.statusText}`,
+    );
   }
 }
 
@@ -92,7 +94,9 @@ function formatConditionType(type: string): string {
  * @returns Slack webhook payload
  */
 export function createSlackPayload(event: AlertEvent): object {
-  const color = event.alert.condition.type.includes("above") ? "#36a64f" : "#ff0000";
+  const color = event.alert.condition.type.includes("above")
+    ? "#36a64f"
+    : "#ff0000";
 
   return {
     attachments: [
@@ -125,7 +129,9 @@ export function createSlackPayload(event: AlertEvent): object {
  * @returns Discord webhook payload
  */
 export function createDiscordPayload(event: AlertEvent): object {
-  const color = event.alert.condition.type.includes("above") ? 0x36a64f : 0xff0000;
+  const color = event.alert.condition.type.includes("above")
+    ? 0x36a64f
+    : 0xff0000;
 
   return {
     embeds: [
@@ -212,8 +218,9 @@ export function createWebhookNotifier(
     return null;
   }
 
-  return (event) => notifyWebhook(event, {
-    url: config.url,
-    method: config.method,
-  });
+  return (event) =>
+    notifyWebhook(event, {
+      url: config.url,
+      method: config.method,
+    });
 }

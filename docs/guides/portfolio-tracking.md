@@ -1,6 +1,7 @@
 # Portfolio Tracking Guide
 
-fetch_quote includes a portfolio tracking feature to monitor your stock positions and calculate gains/losses.
+fetch_quote includes a portfolio tracking feature to monitor your stock
+positions and calculate gains/losses.
 
 ## Setting Up Portfolio
 
@@ -11,6 +12,7 @@ fetch_quote includes a portfolio tracking feature to monitor your stock position
 ```
 
 Parameters:
+
 - `AAPL` - Stock symbol
 - `100` - Number of shares
 - `150.25` - Purchase price per share
@@ -22,6 +24,7 @@ Parameters:
 ```
 
 Output:
+
 ```
 Portfolio Summary                          2024-01-15 09:30:00
 
@@ -179,4 +182,5 @@ Day Change = (Current Price - Previous Close) × Shares
 1. **Record all transactions** - Keep accurate records of buy/sell prices
 2. **Regular backups** - Export portfolio periodically
 3. **Verify data** - Cross-check with broker statements
-4. **Track multiple accounts** - Use separate config files for different accounts
+4. **Track multiple accounts** - Use separate config files for different
+   accounts

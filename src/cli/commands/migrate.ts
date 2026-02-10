@@ -94,7 +94,10 @@ export async function exportData(
             finnhub: {},
           };
         }
-        bundle.data.config = configToExport as unknown as Record<string, unknown>;
+        bundle.data.config = configToExport as unknown as Record<
+          string,
+          unknown
+        >;
       }
     } catch {
       // No config file, skip
@@ -167,7 +170,8 @@ async function collectCredentials(): Promise<Record<string, string>> {
   try {
     const { config } = await loadConfig();
     if (config.credentials.alphaVantage?.apiKey) {
-      credentials.ALPHA_VANTAGE_API_KEY = config.credentials.alphaVantage.apiKey;
+      credentials.ALPHA_VANTAGE_API_KEY =
+        config.credentials.alphaVantage.apiKey;
     }
     if (config.credentials.finnhub?.apiKey) {
       credentials.FINNHUB_API_KEY = config.credentials.finnhub.apiKey;
@@ -183,10 +187,10 @@ async function collectCredentials(): Promise<Record<string, string>> {
  * Encrypts credentials using a passphrase.
  * Uses base64 encoding with XOR (simple encryption for portability).
  */
-async function encryptCredentials(
+function encryptCredentials(
   credentials: Record<string, string>,
   passphrase: string,
-): Promise<string> {
+): string {
   const data = JSON.stringify(credentials);
   const encoder = new TextEncoder();
   const dataBytes = encoder.encode(data);
@@ -320,7 +324,9 @@ export async function importData(
       await Deno.writeTextFile(configPath, yamlContent);
       result.configImported = true;
     } else {
-      result.warnings.push("Config file exists, skipping (use --overwrite to replace)");
+      result.warnings.push(
+        "Config file exists, skipping (use --overwrite to replace)",
+      );
     }
   }
 
@@ -331,10 +337,15 @@ export async function importData(
 
     if (!exists || overwrite) {
       await ensureDir(portfolioPath);
-      await Deno.writeTextFile(portfolioPath, JSON.stringify(bundle.data.portfolio, null, 2));
+      await Deno.writeTextFile(
+        portfolioPath,
+        JSON.stringify(bundle.data.portfolio, null, 2),
+      );
       result.portfolioImported = true;
     } else {
-      result.warnings.push("Portfolio file exists, skipping (use --overwrite to replace)");
+      result.warnings.push(
+        "Portfolio file exists, skipping (use --overwrite to replace)",
+      );
     }
   }
 
@@ -352,7 +363,9 @@ export async function importData(
       await Deno.writeTextFile(alertsPath, JSON.stringify(alertsData, null, 2));
       result.alertsImported = true;
     } else {
-      result.warnings.push("Alerts file exists, skipping (use --overwrite to replace)");
+      result.warnings.push(
+        "Alerts file exists, skipping (use --overwrite to replace)",
+      );
     }
   }
 
@@ -363,9 +376,14 @@ export async function importData(
 
       if (bundle.credentials.encrypted) {
         if (!options.passphrase) {
-          result.warnings.push("Credentials are encrypted but no passphrase provided");
+          result.warnings.push(
+            "Credentials are encrypted but no passphrase provided",
+          );
         } else {
-          credentials = decryptCredentials(bundle.credentials.data!, options.passphrase);
+          credentials = decryptCredentials(
+            bundle.credentials.data!,
+            options.passphrase,
+          );
           writeCredentialsToEnvFile(credentials);
           result.credentialsImported = true;
         }
@@ -475,7 +493,11 @@ export function getExportSummary(bundle: ExportBundle): string[] {
     lines.push(`  - Alerts (${bundle.data.alerts.length} rules)`);
   }
   if (bundle.credentials) {
-    lines.push(`  - Credentials (${bundle.credentials.encrypted ? "encrypted" : "plain"})`);
+    lines.push(
+      `  - Credentials (${
+        bundle.credentials.encrypted ? "encrypted" : "plain"
+      })`,
+    );
   }
 
   return lines;

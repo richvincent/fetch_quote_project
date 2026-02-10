@@ -22,12 +22,11 @@ export function computeMetrics(bars: DailyBar[]): Metrics {
     const bar = window[i];
 
     // Calculate split-adjusted high
-    const multiplier =
-      Number.isFinite(bar.adjustedClose) &&
-      Number.isFinite(bar.close) &&
-      bar.close !== 0
-        ? bar.adjustedClose / bar.close
-        : 1;
+    const multiplier = Number.isFinite(bar.adjustedClose) &&
+        Number.isFinite(bar.close) &&
+        bar.close !== 0
+      ? bar.adjustedClose / bar.close
+      : 1;
 
     const adjHigh = bar.high * multiplier;
     if (Number.isFinite(adjHigh)) {
@@ -82,7 +81,9 @@ export function determineSignal(
   buyPct = DEFAULTS.BUY_PCT,
   sellPct = DEFAULTS.SELL_PCT,
 ): Signal {
-  if (!Number.isFinite(price) || !Number.isFinite(high52Week) || high52Week <= 0) {
+  if (
+    !Number.isFinite(price) || !Number.isFinite(high52Week) || high52Week <= 0
+  ) {
     return null;
   }
 
@@ -103,8 +104,14 @@ export function determineSignal(
  * @param avgVolume - Average volume
  * @returns Percentage difference (positive = above average)
  */
-export function volumeComparison(todayVolume: number, avgVolume: number): number {
-  if (!Number.isFinite(todayVolume) || !Number.isFinite(avgVolume) || avgVolume === 0) {
+export function volumeComparison(
+  todayVolume: number,
+  avgVolume: number,
+): number {
+  if (
+    !Number.isFinite(todayVolume) || !Number.isFinite(avgVolume) ||
+    avgVolume === 0
+  ) {
     return NaN;
   }
   return (todayVolume - avgVolume) / avgVolume;

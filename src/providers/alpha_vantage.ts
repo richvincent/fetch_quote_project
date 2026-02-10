@@ -3,18 +3,18 @@
  * @module providers/alpha_vantage
  */
 
-import type { Quote, DailyBar, NewsItem } from "../core/types.ts";
+import type { DailyBar, NewsItem, Quote } from "../core/types.ts";
 import { API_URLS, DEFAULTS, MS_PER_DAY } from "../core/constants.ts";
 import type { Cache } from "../cache/types.ts";
 import { cachedFetchJson, type RetryInfo } from "../utils/http.ts";
 import { parseAVTimestamp } from "../utils/format.ts";
 import type {
-  DataProvider,
-  ProviderFeature,
-  ProviderConfig,
-  AVGlobalQuoteResp,
   AVDailyResp,
+  AVGlobalQuoteResp,
   AVNewsResp,
+  DataProvider,
+  ProviderConfig,
+  ProviderFeature,
 } from "./types.ts";
 
 /**
@@ -57,7 +57,13 @@ export class AlphaVantageProvider implements DataProvider {
    * Fetches data with caching support.
    */
   private async fetch<T>(url: string, ttlMs: number): Promise<T> {
-    return await cachedFetchJson<T>(url, this.cache, ttlMs, undefined, this.onRetry);
+    return await cachedFetchJson<T>(
+      url,
+      this.cache,
+      ttlMs,
+      undefined,
+      this.onRetry,
+    );
   }
 
   async fetchQuote(symbol: string): Promise<Quote> {
@@ -128,7 +134,10 @@ export class AlphaVantageProvider implements DataProvider {
     });
   }
 
-  async fetchNews(symbol: string, limit = DEFAULTS.NEWS_ITEM_LIMIT): Promise<NewsItem[]> {
+  async fetchNews(
+    symbol: string,
+    limit = DEFAULTS.NEWS_ITEM_LIMIT,
+  ): Promise<NewsItem[]> {
     const dt = new Date(Date.now() - DEFAULTS.NEWS_DAYS_BACK * MS_PER_DAY);
     const timeFrom = dt.toISOString().slice(0, 19) + "Z";
 
@@ -189,7 +198,7 @@ export class AlphaVantageProvider implements DataProvider {
     return supported.includes(feature);
   }
 
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): boolean {
     return !!this.apiKey;
   }
 }

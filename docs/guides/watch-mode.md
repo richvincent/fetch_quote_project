@@ -1,6 +1,7 @@
 # Watch Mode Guide
 
-Watch mode provides continuous monitoring of stock prices with automatic updates.
+Watch mode provides continuous monitoring of stock prices with automatic
+updates.
 
 ## Basic Usage
 
@@ -9,6 +10,7 @@ Watch mode provides continuous monitoring of stock prices with automatic updates
 ```
 
 This will:
+
 - Display the quote
 - Refresh every 60 seconds (default)
 - Clear the screen between updates
@@ -57,9 +59,9 @@ In `~/.fetch_quote.yaml`:
 
 ```yaml
 watch:
-  interval: 60        # Default interval in seconds
-  clearScreen: true   # Clear screen between updates
-  sound: false        # Play sound on significant changes
+  interval: 60 # Default interval in seconds
+  clearScreen: true # Clear screen between updates
+  sound: false # Play sound on significant changes
 ```
 
 ### Sound Alerts
@@ -132,11 +134,13 @@ The program handles the interrupt gracefully and exits cleanly.
 Watch mode and alerts can run together:
 
 Terminal 1 - Visual monitoring:
+
 ```bash
 ./fetch_quote.ts -t AAPL --watch --chart
 ```
 
 Terminal 2 - Alert monitoring:
+
 ```bash
 ./fetch_quote.ts alert watch
 ```

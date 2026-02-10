@@ -7,8 +7,8 @@ import type {
   Alert,
   AlertCondition,
   AlertEvent,
-  Quote,
   DailyBar,
+  Quote,
 } from "../core/types.ts";
 import type { RSIResult } from "../core/types.ts";
 import { calculateRSI } from "../indicators/rsi.ts";
@@ -50,12 +50,14 @@ export function evaluateCondition(
     }
 
     case "rsi_above": {
-      const rsi = context.rsi || (context.bars ? calculateRSI(context.bars, condition.period) : null);
+      const rsi = context.rsi ||
+        (context.bars ? calculateRSI(context.bars, condition.period) : null);
       return rsi !== null && rsi.value >= condition.value;
     }
 
     case "rsi_below": {
-      const rsi = context.rsi || (context.bars ? calculateRSI(context.bars, condition.period) : null);
+      const rsi = context.rsi ||
+        (context.bars ? calculateRSI(context.bars, condition.period) : null);
       return rsi !== null && rsi.value <= condition.value;
     }
 
@@ -121,7 +123,9 @@ export function createAlertEvent(
   context: AlertContext,
 ): AlertEvent {
   const conditionStr = formatCondition(alert.condition);
-  const message = `Alert: ${alert.symbol} - ${conditionStr} (current: $${context.quote.price.toFixed(2)})`;
+  const message = `Alert: ${alert.symbol} - ${conditionStr} (current: $${
+    context.quote.price.toFixed(2)
+  })`;
 
   return {
     alert,
@@ -186,7 +190,11 @@ export async function checkAlerts(
       events.push(event);
 
       // Update last triggered time
-      await updateAlert(alert.id, { lastTriggered: event.triggeredAt }, alertsPath);
+      await updateAlert(
+        alert.id,
+        { lastTriggered: event.triggeredAt },
+        alertsPath,
+      );
     }
   }
 
@@ -251,7 +259,9 @@ export class AlertMonitor {
   private async runCheck(): Promise<void> {
     try {
       const alerts = await loadAlerts(this.config.alertsPath);
-      const symbols = [...new Set(alerts.filter((a) => a.enabled).map((a) => a.symbol))];
+      const symbols = [
+        ...new Set(alerts.filter((a) => a.enabled).map((a) => a.symbol)),
+      ];
 
       // Fetch contexts for all symbols
       const contexts = new Map<string, AlertContext>();

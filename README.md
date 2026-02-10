@@ -1,6 +1,7 @@
 # Fetch Quote
 
-A powerful CLI tool for real-time stock quotes, technical analysis, portfolio tracking, and price alerts.
+A powerful CLI tool for real-time stock quotes, technical analysis, portfolio
+tracking, and price alerts.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Deno](https://img.shields.io/badge/deno-1.x-informational)
@@ -78,15 +79,20 @@ Technical Indicators:
 
 Full documentation is available in the `docs/` directory:
 
-- **[Getting Started](docs/getting-started/installation.md)** - Installation and setup
+- **[Getting Started](docs/getting-started/installation.md)** - Installation and
+  setup
 - **[Quick Start](docs/getting-started/quickstart.md)** - Essential commands
-- **[Configuration](docs/getting-started/configuration.md)** - YAML config reference
-- **[CLI Reference](docs/reference/cli-reference.md)** - Complete command reference
+- **[Configuration](docs/getting-started/configuration.md)** - YAML config
+  reference
+- **[CLI Reference](docs/reference/cli-reference.md)** - Complete command
+  reference
 
 ### Feature Guides
 
-- **[Technical Analysis](docs/guides/technical-analysis.md)** - RSI, SMA, MACD usage
-- **[Portfolio Tracking](docs/guides/portfolio-tracking.md)** - Managing positions
+- **[Technical Analysis](docs/guides/technical-analysis.md)** - RSI, SMA, MACD
+  usage
+- **[Portfolio Tracking](docs/guides/portfolio-tracking.md)** - Managing
+  positions
 - **[Alerts](docs/guides/alerts.md)** - Setting up notifications
 - **[Watch Mode](docs/guides/watch-mode.md)** - Continuous monitoring
 
@@ -164,12 +170,13 @@ deno fmt
 
 ## API Rate Limits
 
-| Provider | Free Tier Limit |
-|----------|-----------------|
-| Alpha Vantage | 25 calls/day |
-| Finnhub | 60 calls/minute |
+| Provider      | Free Tier Limit |
+| ------------- | --------------- |
+| Alpha Vantage | 25 calls/day    |
+| Finnhub       | 60 calls/minute |
 
 Enable caching to reduce API calls:
+
 ```bash
 ./fetch_quote.ts -t AAPL --cache-dir ~/.cache/fetch_quote
 ```
@@ -184,5 +191,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Acknowledgments
 
-- Market data: [Alpha Vantage](https://www.alphavantage.co), [Finnhub](https://finnhub.io)
+- Market data: [Alpha Vantage](https://www.alphavantage.co),
+  [Finnhub](https://finnhub.io)
 - Runtime: [Deno](https://deno.land/)

@@ -5,14 +5,22 @@
 import { assertEquals, assertExists } from "@std/assert";
 import type { DailyBar } from "../../../src/core/types.ts";
 import { calculateRSI } from "../../../src/indicators/rsi.ts";
-import { calculateSMA, calculateSMAs, detectSMACross } from "../../../src/indicators/sma.ts";
+import {
+  calculateSMA,
+  calculateSMAs,
+  detectSMACross,
+} from "../../../src/indicators/sma.ts";
 import { calculateMACD } from "../../../src/indicators/macd.ts";
 import { calculateIndicators } from "../../../src/indicators/mod.ts";
 
 /**
  * Generates mock daily bars with predictable prices.
  */
-function generateBars(count: number, startPrice: number = 100, trend: "up" | "down" | "flat" = "flat"): DailyBar[] {
+function generateBars(
+  count: number,
+  startPrice: number = 100,
+  trend: "up" | "down" | "flat" = "flat",
+): DailyBar[] {
   const bars: DailyBar[] = [];
   let price = startPrice;
 
@@ -185,7 +193,10 @@ Deno.test("detectSMACross detects no cross", () => {
   const bars = generateBars(250);
   const result = detectSMACross(bars);
   // Most random data won't have a cross on the exact last day
-  assertEquals(result === "none" || result === "golden" || result === "death", true);
+  assertEquals(
+    result === "none" || result === "golden" || result === "death",
+    true,
+  );
 });
 
 // MACD Tests
@@ -212,7 +223,8 @@ Deno.test("calculateMACD histogram is macdLine minus signalLine", () => {
   const result = calculateMACD(bars);
 
   assertExists(result);
-  const expectedHistogram = Math.round((result.macdLine - result.signalLine) * 100) / 100;
+  const expectedHistogram =
+    Math.round((result.macdLine - result.signalLine) * 100) / 100;
   assertEquals(result.histogram, expectedHistogram);
 });
 

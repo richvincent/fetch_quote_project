@@ -3,7 +3,7 @@
  * @module providers/types
  */
 
-import type { Quote, DailyBar, NewsItem } from "../core/types.ts";
+import type { DailyBar, NewsItem, Quote } from "../core/types.ts";
 
 /**
  * Features a data provider may support.
@@ -78,7 +78,7 @@ export interface DataProvider {
    * Checks if the provider is available (has valid credentials, etc.).
    * @returns True if provider can be used
    */
-  isAvailable(): Promise<boolean>;
+  isAvailable(): boolean;
 }
 
 /**
@@ -137,24 +137,24 @@ export interface AVNewsResp {
  * Finnhub API response types.
  */
 export interface FinnhubQuote {
-  c: number;  // Current price
-  d: number;  // Change
+  c: number; // Current price
+  d: number; // Change
   dp: number; // Percent change
-  h: number;  // High price of the day
-  l: number;  // Low price of the day
-  o: number;  // Open price of the day
+  h: number; // High price of the day
+  l: number; // Low price of the day
+  o: number; // Open price of the day
   pc: number; // Previous close price
-  t: number;  // Timestamp
+  t: number; // Timestamp
 }
 
 export interface FinnhubCandle {
-  c: number[];  // Close prices
-  h: number[];  // High prices
-  l: number[];  // Low prices
-  o: number[];  // Open prices
-  s: string;    // Status
-  t: number[];  // Timestamps
-  v: number[];  // Volume
+  c: number[]; // Close prices
+  h: number[]; // High prices
+  l: number[]; // Low prices
+  o: number[]; // Open prices
+  s: string; // Status
+  t: number[]; // Timestamps
+  v: number[]; // Volume
 }
 
 export interface FinnhubNews {

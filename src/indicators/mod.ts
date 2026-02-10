@@ -4,7 +4,12 @@
  */
 
 export { calculateRSI, calculateRSIHistory } from "./rsi.ts";
-export { calculateSMA, calculateSMAs, detectSMACross, calculateSMAHistory } from "./sma.ts";
+export {
+  calculateSMA,
+  calculateSMAHistory,
+  calculateSMAs,
+  detectSMACross,
+} from "./sma.ts";
 export { calculateMACD, calculateMACDHistory } from "./macd.ts";
 
 import type { DailyBar, IndicatorOutput, SMAResult } from "../core/types.ts";
@@ -112,19 +117,27 @@ export function formatIndicators(indicators: IndicatorOutput): string[] {
 
   if (indicators.rsi) {
     const rsi = indicators.rsi;
-    const interpText = rsi.interpretation === "neutral" ? "" : ` (${rsi.interpretation})`;
+    const interpText = rsi.interpretation === "neutral"
+      ? ""
+      : ` (${rsi.interpretation})`;
     lines.push(`  RSI(${rsi.period}): ${rsi.value}${interpText}`);
   }
 
   if (indicators.sma) {
     for (const sma of indicators.sma) {
-      const position = sma.priceRelation === "above" ? "price above"
-                     : sma.priceRelation === "below" ? "price below"
-                     : "price at";
-      lines.push(`  SMA(${sma.period}): $${sma.value.toFixed(2)} (${position})`);
+      const position = sma.priceRelation === "above"
+        ? "price above"
+        : sma.priceRelation === "below"
+        ? "price below"
+        : "price at";
+      lines.push(
+        `  SMA(${sma.period}): $${sma.value.toFixed(2)} (${position})`,
+      );
 
       if (sma.crossover) {
-        const crossType = sma.crossover === "golden" ? "Golden Cross" : "Death Cross";
+        const crossType = sma.crossover === "golden"
+          ? "Golden Cross"
+          : "Death Cross";
         lines.push(`    ^ ${crossType} detected`);
       }
     }

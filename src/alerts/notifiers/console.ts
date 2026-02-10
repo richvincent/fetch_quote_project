@@ -31,9 +31,9 @@ export function notifyConsole(event: AlertEvent): void {
 
   console.log(
     `${COLORS.bold}${COLORS.yellow}⚠ ALERT${COLORS.reset} ` +
-    `[${timestamp}] ` +
-    `${COLORS.cyan}${symbol}${COLORS.reset} ` +
-    `$${price} - ${event.message}`,
+      `[${timestamp}] ` +
+      `${COLORS.cyan}${symbol}${COLORS.reset} ` +
+      `$${price} - ${event.message}`,
   );
 
   // Play bell

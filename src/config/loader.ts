@@ -5,7 +5,7 @@
 
 import { parse as parseYaml } from "@std/yaml";
 import { expandPath } from "../utils/format.ts";
-import type { AppConfig, PartialConfig, CLIArgs } from "./types.ts";
+import type { AppConfig, CLIArgs, PartialConfig } from "./types.ts";
 import { DEFAULT_CONFIG, generateSampleConfig } from "./defaults.ts";
 
 /**
@@ -58,10 +58,13 @@ function deepMerge(
  * Supports ${VAR} and $VAR syntax.
  */
 function expandEnvVars(value: string): string {
-  return value.replace(/\$\{([^}]+)\}|\$([A-Z_][A-Z0-9_]*)/gi, (_, braced, unbraced) => {
-    const varName = braced || unbraced;
-    return Deno.env.get(varName) || "";
-  });
+  return value.replace(
+    /\$\{([^}]+)\}|\$([A-Z_][A-Z0-9_]*)/gi,
+    (_, braced, unbraced) => {
+      const varName = braced || unbraced;
+      return Deno.env.get(varName) || "";
+    },
+  );
 }
 
 /**
@@ -104,7 +107,9 @@ async function readConfigFile(path: string): Promise<PartialConfig | null> {
 /**
  * Finds and loads the first existing config file.
  */
-async function findConfigFile(): Promise<{ path: string; config: PartialConfig } | null> {
+async function findConfigFile(): Promise<
+  { path: string; config: PartialConfig } | null
+> {
   for (const path of CONFIG_PATHS) {
     const config = await readConfigFile(path);
     if (config !== null) {
@@ -183,7 +188,9 @@ export interface LoadConfigResult {
  * Loads configuration from all sources and merges them.
  * Priority: CLI args > env vars > config file > defaults
  */
-export async function loadConfig(args: CLIArgs = {}): Promise<LoadConfigResult> {
+export async function loadConfig(
+  args: CLIArgs = {},
+): Promise<LoadConfigResult> {
   const warnings: string[] = [];
   let configPath: string | null = null;
 

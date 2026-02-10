@@ -57,7 +57,8 @@ export function parseChangePercent(s?: string): number {
 export function validateTicker(s: string): boolean {
   // Must start with letter, allow letters, digits, dots, dashes
   // Optional exchange prefix like "TSX:" or "NYSE:"
-  return /^[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*(?::[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*)?$/.test(s);
+  return /^[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*(?::[A-Z][A-Z0-9]*(?:[.\-][A-Z0-9]+)*)?$/
+    .test(s);
 }
 
 /**
@@ -135,7 +136,11 @@ export function truncate(s: string, maxLen: number): string {
  * @param align - Alignment ("left" | "right")
  * @returns Padded string
  */
-export function pad(s: string, width: number, align: "left" | "right" = "left"): string {
+export function pad(
+  s: string,
+  width: number,
+  align: "left" | "right" = "left",
+): string {
   if (s.length >= width) return s;
   const padding = " ".repeat(width - s.length);
   return align === "left" ? s + padding : padding + s;
@@ -147,5 +152,6 @@ export function pad(s: string, width: number, align: "left" | "right" = "left"):
  * @returns Clean string
  */
 export function stripAnsi(s: string): string {
+  // deno-lint-ignore no-control-regex
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }

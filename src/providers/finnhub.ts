@@ -3,17 +3,17 @@
  * @module providers/finnhub
  */
 
-import type { Quote, DailyBar, NewsItem } from "../core/types.ts";
+import type { DailyBar, NewsItem, Quote } from "../core/types.ts";
 import { API_URLS, DEFAULTS } from "../core/constants.ts";
 import type { Cache } from "../cache/types.ts";
 import { cachedFetchJson, type RetryInfo } from "../utils/http.ts";
 import type {
   DataProvider,
-  ProviderFeature,
-  ProviderConfig,
-  FinnhubQuote,
   FinnhubCandle,
   FinnhubNews,
+  FinnhubQuote,
+  ProviderConfig,
+  ProviderFeature,
 } from "./types.ts";
 
 /**
@@ -44,7 +44,10 @@ export class FinnhubProvider implements DataProvider {
   /**
    * Builds a Finnhub API URL with parameters.
    */
-  private buildUrl(endpoint: string, params: Record<string, string> = {}): string {
+  private buildUrl(
+    endpoint: string,
+    params: Record<string, string> = {},
+  ): string {
     const u = new URL(`${this.baseUrl}${endpoint}`);
     for (const [k, v] of Object.entries(params)) {
       u.searchParams.set(k, v);
@@ -57,7 +60,13 @@ export class FinnhubProvider implements DataProvider {
    * Fetches data with caching support.
    */
   private async fetch<T>(url: string, ttlMs: number): Promise<T> {
-    return await cachedFetchJson<T>(url, this.cache, ttlMs, undefined, this.onRetry);
+    return await cachedFetchJson<T>(
+      url,
+      this.cache,
+      ttlMs,
+      undefined,
+      this.onRetry,
+    );
   }
 
   async fetchQuote(symbol: string): Promise<Quote> {
@@ -121,9 +130,14 @@ export class FinnhubProvider implements DataProvider {
     return bars;
   }
 
-  async fetchNews(symbol: string, limit = DEFAULTS.NEWS_ITEM_LIMIT): Promise<NewsItem[]> {
+  async fetchNews(
+    symbol: string,
+    limit = DEFAULTS.NEWS_ITEM_LIMIT,
+  ): Promise<NewsItem[]> {
     const now = new Date();
-    const from = new Date(now.getTime() - DEFAULTS.NEWS_DAYS_BACK * 86400 * 1000);
+    const from = new Date(
+      now.getTime() - DEFAULTS.NEWS_DAYS_BACK * 86400 * 1000,
+    );
 
     const url = this.buildUrl("/company-news", {
       symbol,
@@ -175,7 +189,7 @@ export class FinnhubProvider implements DataProvider {
     return supported.includes(feature);
   }
 
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): boolean {
     return !!this.apiKey;
   }
 }

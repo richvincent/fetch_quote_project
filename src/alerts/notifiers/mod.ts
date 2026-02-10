@@ -3,18 +3,23 @@
  * @module alerts/notifiers
  */
 
-export { notifyConsole, formatConsoleAlert } from "./console.ts";
-export { notifyNtfy, createNtfyNotifier, testNtfyConnection, type NtfyConfig } from "./ntfy.ts";
+export { formatConsoleAlert, notifyConsole } from "./console.ts";
 export {
-  notifyWebhook,
-  createWebhookNotifier,
-  notifySlack,
-  notifyDiscord,
-  createSlackPayload,
+  createNtfyNotifier,
+  notifyNtfy,
+  type NtfyConfig,
+  testNtfyConnection,
+} from "./ntfy.ts";
+export {
   createDiscordPayload,
+  createSlackPayload,
+  createWebhookNotifier,
+  notifyDiscord,
+  notifySlack,
+  notifyWebhook,
   type WebhookConfig,
 } from "./webhook.ts";
-export { notifyDesktop, isDesktopNotificationAvailable } from "./desktop.ts";
+export { isDesktopNotificationAvailable, notifyDesktop } from "./desktop.ts";
 
 import type { AlertEvent, NotifierConfig } from "../../core/types.ts";
 import { notifyConsole } from "./console.ts";
@@ -45,7 +50,13 @@ export async function sendNotifications(
           notifyNtfy(event, {
             server: config.server,
             topic: config.topic,
-            priority: config.priority as "min" | "low" | "default" | "high" | "max" | undefined,
+            priority: config.priority as
+              | "min"
+              | "low"
+              | "default"
+              | "high"
+              | "max"
+              | undefined,
           }),
         );
         break;

@@ -6,9 +6,11 @@ fetch_quote provides several technical indicators to help analyze stock trends.
 
 ### RSI (Relative Strength Index)
 
-The RSI measures the speed and magnitude of recent price changes to evaluate overbought or oversold conditions.
+The RSI measures the speed and magnitude of recent price changes to evaluate
+overbought or oversold conditions.
 
 **Usage:**
+
 ```bash
 ./fetch_quote.ts -t AAPL --rsi
 # Or with all indicators:
@@ -16,19 +18,21 @@ The RSI measures the speed and magnitude of recent price changes to evaluate ove
 ```
 
 **Interpretation:**
-| RSI Value | Signal |
-|-----------|--------|
-| < 30 | Oversold (potential buy) |
-| 30-70 | Neutral |
-| > 70 | Overbought (potential sell) |
+
+| RSI Value | Signal                      |
+| --------- | --------------------------- |
+| < 30      | Oversold (potential buy)    |
+| 30-70     | Neutral                     |
+| > 70      | Overbought (potential sell) |
 
 **Configuration:**
+
 ```yaml
 indicators:
   rsi:
-    period: 14       # Default period
-    overbought: 70   # Overbought threshold
-    oversold: 30     # Oversold threshold
+    period: 14 # Default period
+    overbought: 70 # Overbought threshold
+    oversold: 30 # Oversold threshold
 ```
 
 ### SMA (Simple Moving Average)
@@ -36,17 +40,20 @@ indicators:
 Moving averages smooth out price data to identify trend direction.
 
 **Usage:**
+
 ```bash
 ./fetch_quote.ts -t AAPL --sma 50,200
 ```
 
 **Key Signals:**
+
 - **Golden Cross**: 50-day SMA crosses above 200-day SMA (bullish)
 - **Death Cross**: 50-day SMA crosses below 200-day SMA (bearish)
 - **Price Above SMA**: Generally bullish
 - **Price Below SMA**: Generally bearish
 
 **Configuration:**
+
 ```yaml
 indicators:
   sma:
@@ -55,27 +62,32 @@ indicators:
 
 ### MACD (Moving Average Convergence Divergence)
 
-MACD shows the relationship between two moving averages and helps identify momentum changes.
+MACD shows the relationship between two moving averages and helps identify
+momentum changes.
 
 **Usage:**
+
 ```bash
 ./fetch_quote.ts -t AAPL --macd
 ```
 
 **Components:**
+
 - **MACD Line**: 12-day EMA minus 26-day EMA
 - **Signal Line**: 9-day EMA of MACD Line
 - **Histogram**: Difference between MACD and Signal lines
 
 **Interpretation:**
-| Condition | Signal |
-|-----------|--------|
-| MACD crosses above Signal | Bullish |
-| MACD crosses below Signal | Bearish |
-| Positive histogram | Bullish momentum |
-| Negative histogram | Bearish momentum |
+
+| Condition                 | Signal           |
+| ------------------------- | ---------------- |
+| MACD crosses above Signal | Bullish          |
+| MACD crosses below Signal | Bearish          |
+| Positive histogram        | Bullish momentum |
+| Negative histogram        | Bearish momentum |
 
 **Configuration:**
+
 ```yaml
 indicators:
   macd:
@@ -95,6 +107,7 @@ Sell Threshold: $184.00 (8% below high)
 ```
 
 **Customize thresholds:**
+
 ```bash
 ./fetch_quote.ts -t AAPL --buy-pct 10 --sell-pct 5
 ```
@@ -108,12 +121,14 @@ Use multiple indicators for confluence:
 ```
 
 **Strong Buy Signal** (multiple bullish indicators):
+
 - RSI < 30 (oversold)
 - Price in buy zone
 - Golden cross on SMA
 - MACD histogram turning positive
 
 **Strong Sell Signal** (multiple bearish indicators):
+
 - RSI > 70 (overbought)
 - Price below sell threshold
 - Death cross on SMA
@@ -128,6 +143,7 @@ Export indicator data for external analysis:
 ```
 
 Output:
+
 ```json
 {
   "rsi": {
@@ -163,6 +179,8 @@ Set alerts for indicator thresholds:
 ## Best Practices
 
 1. **Never rely on a single indicator** - Use multiple for confirmation
-2. **Consider market context** - Indicators work differently in trending vs. ranging markets
-3. **Watch for divergences** - When price makes new highs but RSI doesn't, it may signal weakness
+2. **Consider market context** - Indicators work differently in trending vs.
+   ranging markets
+3. **Watch for divergences** - When price makes new highs but RSI doesn't, it
+   may signal weakness
 4. **Use appropriate timeframes** - Longer periods for trend, shorter for timing

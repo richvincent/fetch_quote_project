@@ -4,14 +4,14 @@
 
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import {
-  fmtMoney,
   fmtInt,
+  fmtMoney,
   fmtPercent,
-  parseChangePercent,
-  validateTicker,
-  parseTickers,
   parseAVTimestamp,
+  parseChangePercent,
+  parseTickers,
   stripAnsi,
+  validateTicker,
 } from "../../../src/utils/format.ts";
 
 Deno.test("fmtMoney formats positive numbers", () => {

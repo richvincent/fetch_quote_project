@@ -1,10 +1,12 @@
 # Contributing to fetch_quote
 
-Thank you for your interest in contributing to fetch_quote! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to fetch_quote! This document
+provides guidelines and information for contributors.
 
 ## Code of Conduct
 
-Please be respectful and constructive in all interactions. We aim to maintain a welcoming environment for all contributors.
+Please be respectful and constructive in all interactions. We aim to maintain a
+welcoming environment for all contributors.
 
 ## Getting Started
 
@@ -132,6 +134,7 @@ Add RSI indicator calculation
 - Document module purpose in `@fileoverview`
 
 Example:
+
 ```typescript
 /**
  * Calculates the Relative Strength Index.
@@ -227,6 +230,7 @@ tests/fixtures/
 ### PR Title
 
 Use conventional commit format:
+
 - `feat: Add new feature`
 - `fix: Fix bug`
 - `docs: Update documentation`
@@ -236,6 +240,7 @@ Use conventional commit format:
 ### PR Description
 
 Include:
+
 - Summary of changes
 - Related issue numbers
 - Testing performed
@@ -252,6 +257,7 @@ Include:
 ### Bug Reports
 
 Include:
+
 - fetch_quote version
 - Deno version
 - Operating system
@@ -262,6 +268,7 @@ Include:
 ### Feature Requests
 
 Include:
+
 - Use case description
 - Proposed solution
 - Alternatives considered

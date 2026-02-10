@@ -57,20 +57,20 @@ export function createMockDailyBars(count = 5): DailyBar[] {
 export function createMockFetch(
   responses: Map<string, { status: number; body: unknown }>,
 ): typeof fetch {
-  return async (input: string | URL | Request): Promise<Response> => {
+  return (input: string | URL | Request): Promise<Response> => {
     const url = typeof input === "string" ? input : input.toString();
 
     // Find matching response by URL prefix
     for (const [pattern, response] of responses) {
       if (url.includes(pattern)) {
-        return new Response(JSON.stringify(response.body), {
+        return Promise.resolve(new Response(JSON.stringify(response.body), {
           status: response.status,
           headers: { "Content-Type": "application/json" },
-        });
+        }));
       }
     }
 
-    return new Response("Not Found", { status: 404 });
+    return Promise.resolve(new Response("Not Found", { status: 404 }));
   };
 }
 
